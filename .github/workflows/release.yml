@@ -39,39 +39,36 @@ jobs:
           fi
 
       - name: Check updater signing key
-        id: signing
         if: steps.release.outputs.exists == 'false'
         shell: bash
         env:
           TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
         run: |
           if [ -z "$TAURI_KEY" ]; then
-            echo "::warning title=缺少更新签名密钥::在仓库 Settings → Secrets and variables → Actions 中添加 TAURI_SIGNING_PRIVATE_KEY 后重新运行。"
-            echo "ready=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "ready=true" >> "$GITHUB_OUTPUT"
+            echo "::error title=缺少更新签名密钥::在仓库 Settings → Secrets and variables → Actions 中添加 TAURI_SIGNING_PRIVATE_KEY 后重新运行本工作流。"
+            exit 1
           fi
 
       - uses: actions/setup-node@v4
-        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        if: steps.release.outputs.exists == 'false'
         with:
           node-version: 22
           cache: npm
 
       - uses: dtolnay/rust-toolchain@stable
-        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        if: steps.release.outputs.exists == 'false'
 
       - uses: swatinem/rust-cache@v2
-        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        if: steps.release.outputs.exists == 'false'
         with:
           workspaces: src-tauri -> target
 
       - name: Install dependencies
-        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        if: steps.release.outputs.exists == 'false'
         run: npm ci
 
       - name: Build and publish
-        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        if: steps.release.outputs.exists == 'false'
         uses: tauri-apps/tauri-action@v0
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
