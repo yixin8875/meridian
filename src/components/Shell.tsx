@@ -35,6 +35,7 @@ export function AppShell({
   noteCount,
   setups,
   saving,
+  unsaved,
   list,
   children,
 }: {
@@ -48,6 +49,7 @@ export function AppShell({
   noteCount: number
   setups: { name: string; count: number }[]
   saving: boolean
+  unsaved: boolean
   list?: ReactNode
   children: ReactNode
 }) {
@@ -147,8 +149,10 @@ export function AppShell({
 
         <div className="mt-auto px-2.5 pb-3">
           <div className="mx-1 mb-2 flex items-center gap-1.5 text-[10px] text-faint">
-            <span className={`h-1.5 w-1.5 rounded-full ${saving ? 'bg-warn' : 'bg-gain'}`} />
-            {saving ? '正在保存…' : '自动保存已开启'}
+            <span
+              className={`h-1.5 w-1.5 rounded-full ${saving || unsaved ? 'bg-warn' : 'bg-gain'}`}
+            />
+            {saving ? '正在保存…' : unsaved ? '有未保存更改' : '自动保存已开启'}
           </div>
           <button
             className={`nav-row ${page === 'settings' ? 'nav-row-active' : ''}`}

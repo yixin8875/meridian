@@ -1,6 +1,6 @@
 [package]
 name = "meridian"
-version = "0.3.3"
+version = "0.3.4"
 description = "MERIDIAN — 本地优先的日内期货复盘台"
 authors = ["MERIDIAN"]
 license = "MIT"
@@ -20,8 +20,11 @@ tauri-build = { version = "2.7.4", features = [] }
 [dependencies]
 serde_json = "1.0"
 serde = { version = "1.0", features = ["derive"] }
+chrono = { version = "0.4", default-features = false, features = ["clock"] }
 log = "0.4"
 tauri = { version = "2.12.5", features = [] }
+tauri-plugin-dialog = "2"
 tauri-plugin-log = "2"
 tauri-plugin-process = "2"
 tauri-plugin-updater = "2"
+zip = "9"

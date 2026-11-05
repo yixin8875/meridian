@@ -36,6 +36,7 @@ function Workspace() {
     notes,
     ready,
     saving,
+    unsaved,
     error,
     setError,
     updateTrade,
@@ -247,6 +248,7 @@ function Workspace() {
         noteCount={notes.length}
         setups={setups}
         saving={saving}
+        unsaved={unsaved}
         list={list}
       >
         {error ? (

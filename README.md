@@ -70,7 +70,7 @@ npm run tauri:build
 - `TAURI_SIGNING_PRIVATE_KEY`：更新签名私钥的**完整内容**。本机生成在 `%USERPROFILE%\.tauri\meridian.key`，不要提交到仓库。
 - `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：生成密钥时设置的密码；无密码可留空或不添加。
 
-应用启动 3 秒后请求 `https://github.com/yixin8875/meridian/releases/latest/download/latest.json`。发现新版本时右下角会提示，点击「下载并安装」后自动重启。更新检查只在生产构建中启用，`tauri:dev` 与浏览器预览不会联网检查。0.3.2 及更早版本尚未包含更新器，需要手动安装一次 0.3.3。
+应用启动 3 秒后请求 `https://github.com/yixin8875/meridian/releases/latest/download/latest.json`。发现新版本时右下角会提示，点击「下载并安装」后自动重启。更新检查只在生产构建中启用，`tauri:dev` 与浏览器预览不会联网检查。0.3.3 是首个包含更新器的版本；0.3.2 及更早版本需要手动安装一次 0.3.3。
 
 本地带签名构建（生成更新包）：
 
@@ -98,6 +98,7 @@ TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/meridian.key" npm run tauri:build
 - **交易字典** —— 合约（代码、名称、每点价值）、时段与形态都可以在设置中自行增删改；改名会同步历史交易，仍被使用的条目不能删除。
 - **多账户** —— 侧栏账户菜单可随时切换或新建账户；每个账户有独立的起始权益、手续费、交易、笔记与统计，设置页支持改名、改参数与删除（连同其数据）。
 - **设置** —— 账户管理与切换；本机数据文件路径；CSV 导入 / 导出（作用于当前账户）；主动载入示例或清空当前账户。
+- **完整备份与恢复** —— 一键导出包含全部账户、交易、笔记、交易字典与 K 线截图的 ZIP；恢复前自动生成当前状态的安全备份。每天首次启动或首次保存时自动保留一份完整备份，默认保留最近 14 份。
 - **自动更新** —— 生产版启动后自动检查 GitHub Releases；发现新版本时在右下角提示，可在应用内下载、安装并重启。
 - **全局搜索** —— `⌘K` / `Ctrl K`，可搜索合约、形态、日期、备注与笔记。
 
@@ -111,9 +112,15 @@ TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/meridian.key" npm run tauri:build
   - Linux：`~/.local/share/com.meridian.trader/meridian.json`
 - K 线截图：同目录 `charts/<图片 id>.jpg`（前端最长边压缩到 1800px）
 - 上一次自动保存：同目录 `meridian.backup.json`
+- 每日完整备份：同目录 `backups/daily/meridian-daily-YYYY-MM-DD.zip`，保留最近 14 份
+- 恢复前安全备份：同目录 `backups/safety/pre-restore-<时间>-<进程号>.zip`
 - 文件损坏时：原文件保留为 `meridian.corrupt-<unix 时间戳>.json`，不会静默覆盖
 
-写入采用「临时文件 + rename」以避免半写状态；前端改动后 250ms 防抖自动保存，侧栏底部显示保存状态。设置页会显示当前真实路径并支持复制。
+写入采用「临时文件 + rename」以避免半写状态；前端改动后 250ms 防抖自动保存，失败会按指数间隔重试，侧栏底部显示保存状态。关闭窗口时会先保存（最多等待 3 秒），避免丢失最后一笔编辑。设置页会显示当前真实路径并支持复制。
+
+### 完整备份与恢复
+
+设置页「完整备份与恢复」可以导出 `.zip`，内容包含 `meridian.json`、`manifest.json` 与 `charts/` 下的全部 K 线图。恢复时会先校验清单、格式版本、账户数据与图片路径，并在替换前自动生成当前状态的安全备份；恢复完成后应用自动重新加载。每日备份在启动或首次保存时生成，超过 14 份后自动删除最旧的备份。
 
 浏览器调试模式没有 Rust 后端，会自动回退到 `localStorage`（键名 `meridian.trader.v2`）与 IndexedDB（图片，库名 `meridian.charts`）。
 
@@ -160,16 +167,17 @@ TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/meridian.key" npm run tauri:build
 
 ```
 src-tauri/
-  src/lib.rs            Tauri 命令：读取 / 保存 / 返回数据路径
+  src/lib.rs            Tauri 命令：数据读写、K 线图、完整备份与恢复
   src/main.rs           桌面入口
   tauri.conf.json       窗口、构建与打包配置
 src/
   App.tsx               hash 路由、选中状态与弹窗编排
-  store.tsx             数据上下文、防抖自动保存与增删改
+  store.tsx             数据上下文、自动保存、重试与关闭前保存
   index.css             Tailwind v4 设计令牌与组件类
   types.ts              Trade / JournalNote / AppData
   lib/
     storage.ts          Tauri invoke 与 localStorage 回退
+    backup.ts           完整备份 / 恢复的 Tauri 调用封装
     csv.ts              CSV 解析、别名映射与导出
     stats.ts            统计、权益曲线、分组与分布
     format.ts           日期、金额、R 值格式化

@@ -1,4 +1,4 @@
-import { useRef, useState } from 'react'
+import { useEffect, useRef, useState } from 'react'
 import {
   Check,
   Copy,
@@ -16,6 +16,14 @@ import {
 import type { Account, ContractConfig } from '../types'
 import { useApp } from '../store'
 import { downloadCsv, importTradesCsv } from '../lib/csv'
+import {
+  backupSupported,
+  createBackup,
+  fmtBytes,
+  getBackupStatus,
+  restoreBackup,
+  type BackupStatus,
+} from '../lib/backup'
 import { buildEquity } from '../lib/stats'
 import { fmtMoney, todayISO } from '../lib/format'
 import { AccountDialog, type AccountValues } from '../components/AccountDialog'
@@ -32,6 +40,7 @@ export function Settings() {
     trades,
     notes,
     saving,
+    unsaved,
     storagePath,
     setActiveAccount,
     addAccount,
@@ -50,6 +59,8 @@ export function Settings() {
     loadDemo,
     clearAll,
     saveNow,
+    saveAndPause,
+    resumeAutoSave,
   } = useApp()
 
   const [notice, setNotice] = useState<Notice>(null)
@@ -71,7 +82,23 @@ export function Settings() {
     value: string
   } | null>(null)
   const [dictError, setDictError] = useState<string | null>(null)
+  const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null)
+  const [backupBusy, setBackupBusy] = useState<'export' | 'restore' | null>(null)
+  const [restoreSource, setRestoreSource] = useState<{ path: string; name: string } | null>(null)
   const fileRef = useRef<HTMLInputElement>(null)
+
+  useEffect(() => {
+    if (!backupSupported()) return
+    let alive = true
+    void getBackupStatus()
+      .then((status) => {
+        if (alive) setBackupStatus(status)
+      })
+      .catch(() => {})
+    return () => {
+      alive = false
+    }
+  }, [])
 
   const copyPath = async () => {
     if (!storagePath) return
@@ -106,6 +133,89 @@ export function Settings() {
       setNotice({ tone: 'error', text: `读取文件失败：${String(err)}` })
     } finally {
       if (fileRef.current) fileRef.current.value = ''
+    }
+  }
+
+  const errText = (err: unknown) => (err instanceof Error ? err.message : String(err))
+
+  const exportBackup = async () => {
+    if (!backupSupported()) {
+      setNotice({ tone: 'error', text: '完整备份只在桌面版可用。' })
+      return
+    }
+    setBackupBusy('export')
+    try {
+      if (!(await saveNow())) {
+        setNotice({ tone: 'error', text: '当前数据未保存成功，已取消导出。' })
+        return
+      }
+      const { save } = await import('@tauri-apps/plugin-dialog')
+      const path = await save({
+        title: '导出 MERIDIAN 完整备份',
+        defaultPath: `meridian-backup-${todayISO()}.zip`,
+        filters: [{ name: 'MERIDIAN 备份', extensions: ['zip'] }],
+      })
+      if (!path) return
+      const info = await createBackup(path)
+      const name = info.path.split(/[\\/]/).pop() ?? info.path
+      setNotice({
+        tone: 'ok',
+        text: `完整备份已导出：${name} · ${info.trades} 笔交易、${info.notes} 篇笔记、${info.charts} 张 K 线图 · ${fmtBytes(info.size)}`,
+      })
+      void getBackupStatus()
+        .then(setBackupStatus)
+        .catch(() => {})
+    } catch (err) {
+      setNotice({ tone: 'error', text: `导出备份失败：${errText(err)}` })
+    } finally {
+      setBackupBusy(null)
+    }
+  }
+
+  const chooseRestore = async () => {
+    if (!backupSupported()) {
+      setNotice({ tone: 'error', text: '完整备份只在桌面版可用。' })
+      return
+    }
+    try {
+      const { open } = await import('@tauri-apps/plugin-dialog')
+      const selected = await open({
+        title: '选择 MERIDIAN 完整备份',
+        multiple: false,
+        directory: false,
+        filters: [{ name: 'MERIDIAN 备份', extensions: ['zip'] }],
+      })
+      if (typeof selected !== 'string') return
+      setRestoreSource({
+        path: selected,
+        name: selected.split(/[\\/]/).pop() ?? selected,
+      })
+    } catch (err) {
+      setNotice({ tone: 'error', text: `选择备份失败：${errText(err)}` })
+    }
+  }
+
+  const confirmRestore = async () => {
+    if (!restoreSource || backupBusy) return
+    setBackupBusy('restore')
+    try {
+      if (!(await saveAndPause())) {
+        resumeAutoSave()
+        setNotice({ tone: 'error', text: '当前数据未保存成功，已取消恢复。' })
+        return
+      }
+      const info = await restoreBackup(restoreSource.path)
+      setRestoreSource(null)
+      setNotice({
+        tone: 'ok',
+        text: `已恢复 ${info.trades} 笔交易、${info.notes} 篇笔记、${info.charts} 张 K 线图。应用即将重新加载。`,
+      })
+      window.setTimeout(() => window.location.reload(), 900)
+    } catch (err) {
+      resumeAutoSave()
+      setNotice({ tone: 'error', text: `恢复失败：${errText(err)}` })
+    } finally {
+      setBackupBusy(null)
     }
   }
 
@@ -205,11 +315,13 @@ export function Settings() {
       <div className="flex items-end justify-between gap-4">
         <div>
           <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-ink">设置</h1>
-          <p className="mt-1 text-[11.5px] text-muted">账户、本机数据与导入导出</p>
+          <p className="mt-1 text-[11.5px] text-muted">账户、数据安全与导入导出</p>
         </div>
         <div className="flex items-center gap-2 text-[10.5px] text-faint">
-          <span className={`h-1.5 w-1.5 rounded-full ${saving ? 'bg-warn' : 'bg-gain'}`} />
-          {saving ? '正在保存…' : '自动保存已开启'}
+          <span
+            className={`h-1.5 w-1.5 rounded-full ${saving || unsaved ? 'bg-warn' : 'bg-gain'}`}
+          />
+          {saving ? '正在保存…' : unsaved ? '有未保存更改' : '自动保存已开启'}
           <button className="btn btn-secondary h-7 px-2 text-[11px]" onClick={() => void saveNow()}>
             立即保存
           </button>
@@ -539,6 +651,72 @@ export function Settings() {
       </section>
 
       <section className="mt-3 rounded-xl border border-line bg-white">
+        <div className="flex items-start gap-2.5 px-5 py-4">
+          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
+            <Database size={15} />
+          </span>
+          <div className="min-w-0 flex-1">
+            <h2 className="text-[12.5px] font-semibold text-ink">完整备份与恢复</h2>
+            <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">
+              包含全部账户、交易、笔记、交易字典与 K 线截图。每天首次启动或首次保存时自动生成一份，
+              保留最近 {backupStatus?.keep ?? 14} 份。
+            </p>
+          </div>
+        </div>
+        <div className="divider" />
+        <div className="px-5 py-4">
+          <div className="flex flex-wrap items-center gap-2">
+            <button
+              className="btn btn-primary"
+              onClick={() => void exportBackup()}
+              disabled={!backupSupported() || backupBusy !== null}
+            >
+              <Download size={14} />
+              {backupBusy === 'export' ? '正在导出…' : '导出完整备份'}
+            </button>
+            <button
+              className="btn btn-secondary"
+              onClick={() => void chooseRestore()}
+              disabled={!backupSupported() || backupBusy !== null}
+            >
+              <Upload size={14} />
+              从备份恢复
+            </button>
+            {!backupSupported() ? (
+              <span className="text-[10.5px] text-faint">仅桌面版可用</span>
+            ) : null}
+          </div>
+          <div className="mt-3 rounded-lg bg-list px-3 py-2.5 text-[10.5px] leading-relaxed text-muted">
+            <div className="flex flex-wrap items-center justify-between gap-2">
+              <span>
+                每日自动备份：
+                {backupStatus
+                  ? backupStatus.count
+                    ? `${backupStatus.count} 份`
+                    : '尚未生成'
+                  : backupSupported()
+                    ? '读取中…'
+                    : '仅桌面版生成'}
+              </span>
+              <span className="num text-faint">
+                {backupStatus?.latest
+                  ? `最近 ${backupStatus.latest.day} · ${fmtBytes(backupStatus.latest.size)}`
+                  : `保留最近 ${backupStatus?.keep ?? 14} 份`}
+              </span>
+            </div>
+            {backupStatus?.dir ? (
+              <div className="mt-1 break-all font-mono text-[9.5px] text-faint">
+                {backupStatus.dir}
+              </div>
+            ) : null}
+          </div>
+          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+            恢复会替换当前所有账户的数据与 K 线图；操作前会先生成一份当前状态的安全备份，恢复完成后应用会自动重新加载。
+          </p>
+        </div>
+      </section>
+
+      <section className="mt-3 rounded-xl border border-line bg-white">
         <div className="flex items-center gap-2.5 px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-list text-muted ring-1 ring-line">
             <FileSpreadsheet size={15} />
@@ -672,7 +850,7 @@ export function Settings() {
       </section>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-faint">
-        <span>MERIDIAN 0.3.3 · Tauri 2 · Rust · React · Tailwind CSS</span>
+        <span>MERIDIAN 0.3.4 · Tauri 2 · Rust · React · Tailwind CSS</span>
         <span>数据仅保存在本机，不上传任何服务器。</span>
       </div>
 
@@ -789,6 +967,52 @@ export function Settings() {
                 }}
               />
             </label>
+          </div>
+        </Modal>
+      ) : null}
+
+      {restoreSource ? (
+        <Modal
+          open
+          onClose={() => {
+            if (backupBusy !== 'restore') setRestoreSource(null)
+          }}
+          title="恢复完整备份"
+          subtitle="当前数据将被替换"
+          width={520}
+          footer={
+            <div className="ml-auto flex items-center gap-2">
+              <button
+                className="btn btn-secondary"
+                onClick={() => setRestoreSource(null)}
+                disabled={backupBusy === 'restore'}
+              >
+                取消
+              </button>
+              <button
+                className="btn btn-danger"
+                onClick={() => void confirmRestore()}
+                disabled={backupBusy === 'restore'}
+              >
+                {backupBusy === 'restore' ? '正在恢复…' : '确认恢复'}
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-3 text-[11.5px] leading-relaxed text-ink-2">
+            <div className="rounded-lg border border-warn/25 bg-warn-soft px-3 py-2 text-[11px] leading-relaxed text-warn">
+              恢复会替换当前所有账户、交易、笔记、交易字典与 K 线图，且无法撤销。
+            </div>
+            <div>
+              <div className="field-label">备份文件</div>
+              <div className="break-all rounded-md border border-line bg-list px-2.5 py-2 font-mono text-[10.5px] text-ink-2">
+                {restoreSource.path}
+              </div>
+            </div>
+            <p className="text-[10.5px] leading-relaxed text-faint">
+              恢复前会自动生成一份当前数据的完整安全备份；恢复完成后应用会自动重新加载。
+              恢复过程中请勿关闭应用。
+            </p>
           </div>
         </Modal>
       ) : null}

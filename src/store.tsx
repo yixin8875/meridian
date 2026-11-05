@@ -10,7 +10,7 @@ import {
 } from 'react'
 import type { Account, AppData, ContractConfig, JournalNote, Trade, TradingConfig } from './types'
 import { createSeedData } from './data/seed'
-import { EMPTY_DATA, loadState, saveState } from './lib/storage'
+import { EMPTY_DATA, hasTauri, loadState, saveState } from './lib/storage'
 import { deleteChart } from './lib/charts'
 import { uid } from './lib/format'
 
@@ -24,6 +24,7 @@ interface StoreValue {
   data: AppData
   ready: boolean
   saving: boolean
+  unsaved: boolean
   error: string | null
   storagePath: string
   /** 当前账户与它的交易 / 笔记（其余账户的数据不出现在界面里）。 */
@@ -58,7 +59,9 @@ interface StoreValue {
   replaceData: (data: AppData) => void
   loadDemo: () => void
   clearAll: () => void
-  saveNow: () => Promise<void>
+  saveNow: () => Promise<boolean>
+  saveAndPause: () => Promise<boolean>
+  resumeAutoSave: () => void
   setError: (message: string | null) => void
 }
 
@@ -74,10 +77,13 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const [data, setData] = useState<AppData>(EMPTY_DATA)
   const [ready, setReady] = useState(false)
   const [saving, setSaving] = useState(false)
+  const [unsaved, setUnsaved] = useState(false)
   const [error, setError] = useState<string | null>(null)
   const [storagePath, setStoragePath] = useState('')
   const dirty = useRef(false)
   const latest = useRef(data)
+  const saveQueue = useRef<Promise<unknown>>(Promise.resolve())
+  const autoSavePaused = useRef(false)
 
   useEffect(() => {
     latest.current = data
@@ -97,20 +103,56 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }
   }, [])
 
+  const persist = useCallback((snapshot: AppData, force = false): Promise<boolean> => {
+    const task = async (): Promise<boolean> => {
+      if (autoSavePaused.current && !force) return true
+      setSaving(true)
+      try {
+        await saveState(snapshot)
+        setError(null)
+        if (latest.current === snapshot) setUnsaved(false)
+        return true
+      } catch (err) {
+        setError(`保存失败：${String(err)}`)
+        setUnsaved(true)
+        return false
+      } finally {
+        setSaving(false)
+      }
+    }
+    const next = saveQueue.current.then(task, task)
+    saveQueue.current = next.then(
+      () => undefined,
+      () => undefined,
+    )
+    return next
+  }, [])
+
   useEffect(() => {
     if (!ready || !dirty.current) return
-    const timer = window.setTimeout(() => {
-      setSaving(true)
-      saveState(data)
-        .then(() => setError(null))
-        .catch((err: unknown) => setError(`保存失败：${String(err)}`))
-        .finally(() => setSaving(false))
-    }, 250)
-    return () => window.clearTimeout(timer)
-  }, [data, ready])
+    let cancelled = false
+    let retryTimer: number | null = null
+    const attempt = async (attemptNo: number) => {
+      const ok = await persist(data)
+      if (cancelled) return
+      if (!ok && attemptNo < 3) {
+        retryTimer = window.setTimeout(
+          () => void attempt(attemptNo + 1),
+          1000 * 2 ** attemptNo,
+        )
+      }
+    }
+    const timer = window.setTimeout(() => void attempt(0), 250)
+    return () => {
+      cancelled = true
+      window.clearTimeout(timer)
+      if (retryTimer !== null) window.clearTimeout(retryTimer)
+    }
+  }, [data, ready, persist])
 
   const mutate = useCallback((updater: (prev: AppData) => AppData) => {
     dirty.current = true
+    setUnsaved(true)
     setData((prev) => updater(prev))
   }, [])
 
@@ -465,23 +507,76 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     }))
   }, [mutate])
 
-  const saveNow = useCallback(async () => {
-    setSaving(true)
-    try {
-      await saveState(latest.current)
-      setError(null)
-    } catch (err) {
-      setError(`保存失败：${String(err)}`)
-    } finally {
-      setSaving(false)
+  const saveNow = useCallback(
+    async (): Promise<boolean> => persist(latest.current),
+    [persist],
+  )
+
+  // 恢复备份前：先暂停自动保存，再强制写入最后一次改动。
+  // 之后即使有排队中的自动保存任务，也不会在恢复完成后把旧数据写回磁盘。
+  const saveAndPause = useCallback(
+    async (): Promise<boolean> => {
+      autoSavePaused.current = true
+      return persist(latest.current, true)
+    },
+    [persist],
+  )
+
+  const resumeAutoSave = useCallback(() => {
+    autoSavePaused.current = false
+    void persist(latest.current)
+  }, [persist])
+
+  // 浏览器预览模式：关闭页面前同步写入 localStorage。
+  useEffect(() => {
+    if (hasTauri()) return
+    const onBeforeUnload = () => {
+      void saveState(latest.current)
     }
+    window.addEventListener('beforeunload', onBeforeUnload)
+    return () => window.removeEventListener('beforeunload', onBeforeUnload)
   }, [])
+
+  // 桌面版：关闭窗口时先保存，最多等待 3 秒，避免丢失最后一笔编辑。
+  useEffect(() => {
+    if (!hasTauri()) return
+    let disposed = false
+    let closing = false
+    let unlisten: (() => void) | null = null
+    void import('@tauri-apps/api/window')
+      .then(({ getCurrentWindow }) => {
+        const appWindow = getCurrentWindow()
+        return appWindow.onCloseRequested((event) => {
+          if (closing) return
+          closing = true
+          event.preventDefault()
+          void Promise.race([
+            saveNow(),
+            new Promise<void>((resolve) => window.setTimeout(resolve, 3000)),
+          ])
+            .then(() => appWindow.destroy())
+            .catch(() => {
+              closing = false
+            })
+        })
+      })
+      .then((fn) => {
+        if (disposed) fn()
+        else unlisten = fn
+      })
+      .catch(() => {})
+    return () => {
+      disposed = true
+      unlisten?.()
+    }
+  }, [saveNow])
 
   const value = useMemo<StoreValue>(
     () => ({
       data,
       ready,
       saving,
+      unsaved,
       error,
       storagePath,
       account,
@@ -513,12 +608,15 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loadDemo,
       clearAll,
       saveNow,
+      saveAndPause,
+      resumeAutoSave,
       setError,
     }),
     [
       data,
       ready,
       saving,
+      unsaved,
       error,
       storagePath,
       account,
@@ -549,6 +647,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       loadDemo,
       clearAll,
       saveNow,
+      saveAndPause,
+      resumeAutoSave,
     ],
   )
 
