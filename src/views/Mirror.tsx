@@ -1,7 +1,6 @@
 import { useMemo } from 'react'
 import { Sparkles } from 'lucide-react'
 import { useApp } from '../store'
-import { DISCIPLINE_ITEMS } from '../data/contracts'
 import {
   computeStats,
   disciplineRates,
@@ -22,7 +21,7 @@ export function Mirror() {
     const sessions = groupTrades(trades, (trade) => trade.session)
     const week = weekStats(trades)
     const hist = rHistogram(trades)
-    const rates = disciplineRates(trades)
+    const rates = disciplineRates(trades, config.disciplineItems)
     const mistakes = mistakeCost(trades)
     const maxCount = Math.max(1, ...hist.map((bucket) => bucket.count))
     const activeWeek = week.filter((day) => day.count > 0)
@@ -42,7 +41,7 @@ export function Mirror() {
       bestSetup: setups[0],
       worstSetup: setups.length > 1 ? setups[setups.length - 1] : undefined,
     }
-  }, [trades, account.startingEquity])
+  }, [trades, account.startingEquity, config.disciplineItems])
 
   if (!model.stats.count) {
     return (
@@ -319,13 +318,13 @@ export function Mirror() {
             <span className="num text-[11px] text-muted">{fmtPct(model.stats.execution, 0)}</span>
           </div>
           <div className="mt-3 space-y-3">
-            {model.rates.map((rate) => {
-              const item = DISCIPLINE_ITEMS.find((entry) => entry.key === rate.key)
-              return (
+            {model.rates.map((rate) => (
                 <div key={rate.key}>
-                  <div className="flex items-center justify-between text-[10.5px]">
-                    <span className="text-muted">{item?.label ?? rate.key}</span>
-                    <span className="num text-ink-2">{rate.pass.toFixed(0)}%</span>
+                  <div className="flex items-center justify-between gap-2 text-[10.5px]">
+                    <span className="truncate text-muted">{rate.label}</span>
+                    <span className="num shrink-0 text-ink-2">
+                      {rate.count ? `${rate.pass.toFixed(0)}%` : '—'}
+                    </span>
                   </div>
                   <div className="mt-1 h-1.5 overflow-hidden rounded-full bg-canvas">
                     <div
@@ -336,8 +335,7 @@ export function Mirror() {
                     />
                   </div>
                 </div>
-              )
-            })}
+            ))}
           </div>
         </section>
 

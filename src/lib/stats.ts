@@ -1,4 +1,4 @@
-import type { CashFlow, Discipline, Range, RiskConfig, Trade } from '../types'
+import type { CashFlow, DisciplineItem, Range, RiskConfig, Trade } from '../types'
 import { minutesOf, shiftISO, todayISO } from './format'
 
 export interface EquityPoint {
@@ -62,7 +62,8 @@ export interface RBucket {
 }
 
 export interface DisciplineRate {
-  key: keyof Discipline
+  key: string
+  label: string
   pass: number
   count: number
 }
@@ -434,12 +435,26 @@ export function rHistogram(trades: Trade[]): RBucket[] {
   return buckets
 }
 
-export function disciplineRates(trades: Trade[]): DisciplineRate[] {
+/**
+ * 按设置中的纪律项统计通过率。只统计实际勾选过该项的交易，
+ * 这样后来新增的纪律项不会被旧交易误判为未通过。
+ */
+export function disciplineRates(
+  trades: Trade[],
+  items: DisciplineItem[],
+): DisciplineRate[] {
   const closed = closedTrades(trades)
-  const keys: (keyof Discipline)[] = ['stopPlanned', 'stopHonored', 'sizePlanned', 'journaled']
-  return keys.map((key) => {
-    const pass = closed.filter((t) => t.discipline[key]).length
-    return { key, count: closed.length, pass: closed.length ? (pass / closed.length) * 100 : 0 }
+  return items.map((item) => {
+    const applicable = closed.filter(
+      (trade) => typeof trade.discipline[item.id] === 'boolean',
+    )
+    const pass = applicable.filter((trade) => trade.discipline[item.id]).length
+    return {
+      key: item.id,
+      label: item.label,
+      count: applicable.length,
+      pass: applicable.length ? (pass / applicable.length) * 100 : 0,
+    }
   })
 }
 

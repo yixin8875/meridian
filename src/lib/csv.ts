@@ -1,5 +1,5 @@
-import type { ContractConfig, Grade, Side, Trade } from '../types'
-import { DEFAULT_CONFIG } from '../data/contracts'
+import type { ContractConfig, Discipline, DisciplineItem, Grade, Side, Trade } from '../types'
+import { DEFAULT_CONFIG, DEFAULT_DISCIPLINE_ITEMS } from '../data/contracts'
 import { minutesOf, uid } from './format'
 
 const ALIASES: Record<string, string> = {
@@ -164,6 +164,7 @@ export function importTradesCsv(
   source: string,
   feePerContract: number,
   contracts: ContractConfig[] = DEFAULT_CONFIG.contracts,
+  disciplineItems: DisciplineItem[] = DEFAULT_DISCIPLINE_ITEMS,
 ): ImportResult {
   const rows = parseRows(source)
   if (rows.length < 2) {
@@ -218,6 +219,11 @@ export function importTradesCsv(
       ),
     ]
 
+    const discipline: Discipline = {}
+    for (const item of disciplineItems) {
+      discipline[item.id] = item.id === 'journaled' ? Boolean(note) : true
+    }
+
     trades.push({
       id: uid('tr'),
       accountId: '',
@@ -238,12 +244,7 @@ export function importTradesCsv(
       setup: get(row, 'setup') || '未分类',
       session: get(row, 'session') || sessionOf(entryTime),
       status,
-      discipline: {
-        stopPlanned: true,
-        stopHonored: true,
-        sizePlanned: true,
-        journaled: Boolean(note),
-      },
+      discipline,
       mistakes,
       note,
       grade: gradeOf(rMultiple),

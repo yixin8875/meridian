@@ -9,7 +9,7 @@ import type {
   TradeStatus,
   TradingConfig,
 } from '../types'
-import { DISCIPLINE_ITEMS, MISTAKE_TAGS, pointValueOf } from '../data/contracts'
+import { pointValueOf } from '../data/contracts'
 import { fmtMoney, fmtR, fmtSignedMoney, todayISO, uid } from '../lib/format'
 import { currentEquity, riskStatus, suggestedQty } from '../lib/stats'
 import { useApp } from '../store'
@@ -53,13 +53,14 @@ const BLANK: FormState = {
   session: '',
   status: 'closed',
   note: '',
-  discipline: {
-    stopPlanned: true,
-    stopHonored: true,
-    sizePlanned: true,
-    journaled: false,
-  },
+  discipline: {},
   mistakes: [],
+}
+
+function defaultDiscipline(items: TradingConfig['disciplineItems']): Discipline {
+  const next: Discipline = {}
+  for (const item of items) next[item.id] = item.id !== 'journaled'
+  return next
 }
 
 function toForm(trade: Trade | null, config: TradingConfig): FormState {
@@ -71,7 +72,7 @@ function toForm(trade: Trade | null, config: TradingConfig): FormState {
       date: todayISO(),
       setup,
       session,
-      discipline: { ...BLANK.discipline },
+      discipline: defaultDiscipline(config.disciplineItems),
     }
   }
   return {
@@ -604,17 +605,18 @@ export function TradeForm({
 
         <div>
           <span className="field-label">过程纪律</span>
+          {config.disciplineItems.length ? (
           <div className="grid grid-cols-2 gap-2">
-            {DISCIPLINE_ITEMS.map((item) => {
-              const active = form.discipline[item.key]
+            {config.disciplineItems.map((item) => {
+              const active = Boolean(form.discipline[item.id])
               return (
                 <button
                   type="button"
-                  key={item.key}
+                  key={item.id}
                   onClick={() =>
                     set('discipline', {
                       ...form.discipline,
-                      [item.key]: !active,
+                      [item.id]: !active,
                     })
                   }
                   className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-[11.5px] transition-colors ${
@@ -635,6 +637,9 @@ export function TradeForm({
               )
             })}
           </div>
+          ) : (
+            <p className="mt-1 text-[10px] text-faint">还没有纪律项，可在设置中维护。</p>
+          )}
         </div>
 
         <div>
@@ -643,7 +648,7 @@ export function TradeForm({
             <span className="text-[10px] text-faint">可选 · 用来区分“结果不好”和“过程做错”</span>
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            {MISTAKE_TAGS.map((tag) => {
+            {config.mistakeTags.map((tag) => {
               const active = form.mistakes.includes(tag)
               return (
                 <button
@@ -667,6 +672,9 @@ export function TradeForm({
                 </button>
               )
             })}
+            {!config.mistakeTags.length ? (
+              <span className="text-[10px] text-faint">还没有错误标签，可在设置中维护。</span>
+            ) : null}
           </div>
           {form.mistakes.length ? (
             <p className="mt-1.5 text-[10px] text-faint">

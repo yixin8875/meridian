@@ -5,6 +5,7 @@ import type {
   Discipline,
   Grade,
   JournalNote,
+  SetupChecklist,
   Side,
   Trade,
 } from '../types'
@@ -355,6 +356,30 @@ function seedFlows(): CashFlow[] {
   ]
 }
 
+function seedChecklists(): SetupChecklist[] {
+  return [
+    {
+      id: 'cl_demo_auction',
+      setup: '失败拍卖',
+      items: [
+        { id: 'chk_demo_auction_1', label: '开盘 15 分钟后再评估拍卖失败' },
+        { id: 'chk_demo_auction_2', label: '回抽进入前一根 K 线区间' },
+        { id: 'chk_demo_auction_3', label: '止损放在拍卖极值外侧' },
+        { id: 'chk_demo_auction_4', label: '数据公布前 5 分钟不开新仓' },
+      ],
+    },
+    {
+      id: 'cl_demo_trend',
+      setup: '趋势回撤',
+      items: [
+        { id: 'chk_demo_trend_1', label: '等待回撤到 20 EMA 附近' },
+        { id: 'chk_demo_trend_2', label: '回撤低点未跌破前一波段低点' },
+        { id: 'chk_demo_trend_3', label: '目标至少为风险的 2 倍' },
+      ],
+    },
+  ]
+}
+
 function seedReviews(): DailyReview[] {
   return [
     {
@@ -367,6 +392,13 @@ function seedReviews(): DailyReview[] {
       executionScore: 80,
       violations: ['移动止损'],
       improvement: '止损只在结构失效时移动，不因为浮亏扩大而临时放宽。',
+      checks: {
+        cl_demo_auction: [
+          'chk_demo_auction_1',
+          'chk_demo_auction_2',
+          'chk_demo_auction_3',
+        ],
+      },
       updatedAt: '2026-11-04T16:10:00Z',
     },
     {
@@ -378,6 +410,9 @@ function seedReviews(): DailyReview[] {
       executionScore: 90,
       violations: [],
       improvement: '保持同样的等待节奏，把“错过”当作正常成本。',
+      checks: {
+        cl_demo_trend: ['chk_demo_trend_1', 'chk_demo_trend_2', 'chk_demo_trend_3'],
+      },
       updatedAt: '2026-11-03T16:05:00Z',
     },
   ]
@@ -483,6 +518,9 @@ export function createSeedData(): AppData {
       contracts: DEFAULT_CONFIG.contracts.map((contract) => ({ ...contract })),
       sessions: [...DEFAULT_CONFIG.sessions],
       setups: [...DEFAULT_CONFIG.setups],
+      disciplineItems: DEFAULT_CONFIG.disciplineItems.map((item) => ({ ...item })),
+      mistakeTags: [...DEFAULT_CONFIG.mistakeTags],
+      checklists: seedChecklists(),
     },
     trades: [...generated, ...openPositions()],
     notes: seedNotes(),

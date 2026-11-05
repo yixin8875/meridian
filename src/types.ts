@@ -23,11 +23,25 @@ export interface RiskConfig {
   maxConsecutiveLosses: number
 }
 
-export interface Discipline {
-  stopPlanned: boolean
-  stopHonored: boolean
-  sizePlanned: boolean
-  journaled: boolean
+/** 交易纪律的实际勾选结果，键为设置中的纪律项 id；旧数据保留四个默认键。 */
+export type Discipline = Record<string, boolean>
+
+/** 可在设置中维护的过程纪律项。id 稳定，改名不影响历史交易。 */
+export interface DisciplineItem {
+  id: string
+  label: string
+}
+
+/** 按形态绑定的盘前检查项。 */
+export interface ChecklistItem {
+  id: string
+  label: string
+}
+
+export interface SetupChecklist {
+  id: string
+  setup: string
+  items: ChecklistItem[]
 }
 
 /** 一张 K 线截图。文件本体存在应用数据目录的 charts/ 下，这里只存引用。 */
@@ -91,6 +105,8 @@ export interface DailyReview {
   executionScore: number
   violations: string[]
   improvement: string
+  /** 盘前检查结果：清单 id → 已勾选的检查项 id。 */
+  checks: Record<string, string[]>
   updatedAt: string
 }
 
@@ -106,6 +122,9 @@ export interface TradingConfig {
   contracts: ContractConfig[]
   sessions: string[]
   setups: string[]
+  disciplineItems: DisciplineItem[]
+  mistakeTags: string[]
+  checklists: SetupChecklist[]
 }
 
 /** 交易账户：起始权益与手续费都按账户独立计算。 */

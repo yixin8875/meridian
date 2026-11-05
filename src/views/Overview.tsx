@@ -11,7 +11,6 @@ import {
 } from 'lucide-react'
 import type { Range } from '../types'
 import { useApp } from '../store'
-import { DISCIPLINE_ITEMS } from '../data/contracts'
 import {
   buildEquity,
   cashFlowSummary,
@@ -55,7 +54,7 @@ export function Overview({
   onNewNote: () => void
   onOpenDate: (date: string) => void
 }) {
-  const { trades, notes, account, reviews, cashFlows } = useApp()
+  const { trades, notes, account, reviews, cashFlows, config } = useApp()
   const [range, setRange] = useState<Range>('ALL')
   const [reviewDate, setReviewDate] = useState<string | null>(null)
   const reviewDates = useMemo(() => new Set(reviews.map((review) => review.date)), [reviews])
@@ -77,11 +76,18 @@ export function Overview({
       equity: last?.equity ?? account.startingEquity,
       open: openTrades(trades),
       recent: closedTrades(trades).slice(-6).reverse(),
-      rates: disciplineRates(trades),
+      rates: disciplineRates(trades, config.disciplineItems),
       flow: cashFlowSummary(cashFlows),
       risk: riskStatus(trades, account.risk, today),
     }
-  }, [trades, account.startingEquity, account.risk, cashFlows, range])
+  }, [
+    trades,
+    account.startingEquity,
+    account.risk,
+    cashFlows,
+    range,
+    config.disciplineItems,
+  ])
 
   const { stats, open, recent, rates } = model
   const riskAlerts = [
@@ -436,13 +442,13 @@ export function Overview({
             />
           </div>
           <div className="mt-3 space-y-2.5">
-            {rates.map((rate) => {
-              const item = DISCIPLINE_ITEMS.find((entry) => entry.key === rate.key)
-              return (
+            {rates.map((rate) => (
                 <div key={rate.key}>
-                  <div className="flex items-center justify-between text-[10.5px]">
-                    <span className="text-muted">{item?.short ?? rate.key}</span>
-                    <span className="num text-ink-2">{rate.pass.toFixed(0)}%</span>
+                  <div className="flex items-center justify-between gap-2 text-[10.5px]">
+                    <span className="truncate text-muted">{rate.label}</span>
+                    <span className="num shrink-0 text-ink-2">
+                      {rate.count ? `${rate.pass.toFixed(0)}%` : '—'}
+                    </span>
                   </div>
                   <div className="mt-1 h-1 overflow-hidden rounded-full bg-canvas">
                     <div
@@ -453,8 +459,7 @@ export function Overview({
                     />
                   </div>
                 </div>
-              )
-            })}
+            ))}
           </div>
           <div className="mt-3.5 border-t border-line pt-2.5 text-[10px] leading-relaxed text-faint">
             完全执行 {stats.clean} 笔，有偏差 {stats.flagged} 笔。

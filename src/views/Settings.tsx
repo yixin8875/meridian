@@ -5,6 +5,7 @@ import {
   Database,
   Download,
   FileSpreadsheet,
+  ListChecks,
   Pencil,
   Plus,
   Sparkles,
@@ -13,7 +14,7 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import type { Account, CashFlow, ContractConfig } from '../types'
+import type { Account, CashFlow, ChecklistItem, ContractConfig } from '../types'
 import { useApp } from '../store'
 import { CASH_FLOW_KINDS } from '../data/contracts'
 import { downloadCsv, importTradesCsv } from '../lib/csv'
@@ -26,7 +27,7 @@ import {
   type BackupStatus,
 } from '../lib/backup'
 import { buildEquity, cashFlowSummary } from '../lib/stats'
-import { fmtMoney, fmtSignedMoney, todayISO } from '../lib/format'
+import { fmtMoney, fmtSignedMoney, todayISO, uid } from '../lib/format'
 import { AccountDialog, type AccountValues } from '../components/AccountDialog'
 import { CashFlowDialog } from '../components/CashFlowForm'
 import { Modal } from '../components/primitives'
@@ -61,6 +62,14 @@ export function Settings() {
     addSetup,
     renameSetup,
     deleteSetup,
+    addDisciplineItem,
+    renameDisciplineItem,
+    deleteDisciplineItem,
+    addMistakeTag,
+    renameMistakeTag,
+    deleteMistakeTag,
+    saveChecklist,
+    deleteChecklist,
     importTrades,
     loadDemo,
     clearAll,
@@ -90,6 +99,17 @@ export function Settings() {
     original: string | null
     value: string
   } | null>(null)
+  const [disciplineDraft, setDisciplineDraft] = useState<{
+    id: string | null
+    label: string
+  } | null>(null)
+  const [tagDraft, setTagDraft] = useState<{ original: string | null; label: string } | null>(
+    null,
+  )
+  const [checklistDraft, setChecklistDraft] = useState<{ setup: string; text: string } | null>(
+    null,
+  )
+  const [removingChecklist, setRemovingChecklist] = useState<string | null>(null)
   const [dictError, setDictError] = useState<string | null>(null)
   const [backupStatus, setBackupStatus] = useState<BackupStatus | null>(null)
   const [backupBusy, setBackupBusy] = useState<'export' | 'restore' | null>(null)
@@ -124,7 +144,12 @@ export function Settings() {
     if (!file) return
     try {
       const source = await file.text()
-      const result = importTradesCsv(source, account.feePerContract, config.contracts)
+      const result = importTradesCsv(
+        source,
+        account.feePerContract,
+        config.contracts,
+        config.disciplineItems,
+      )
       if (result.error) {
         setNotice({ tone: 'error', text: result.error })
         return
@@ -309,6 +334,89 @@ export function Settings() {
     setNotice({
       tone: 'ok',
       text: `已保存${wordDraft.kind === 'session' ? '时段' : '形态'}「${value}」。`,
+    })
+  }
+
+  const startDiscipline = (id: string | null = null, label = '') => {
+    setDictError(null)
+    setDisciplineDraft({ id, label })
+  }
+
+  const submitDiscipline = () => {
+    if (!disciplineDraft) return
+    const label = disciplineDraft.label.trim()
+    if (!label) {
+      setDictError('纪律项名称不能为空。')
+      return
+    }
+    const ok = disciplineDraft.id
+      ? renameDisciplineItem(disciplineDraft.id, label)
+      : addDisciplineItem(label)
+    if (!ok) {
+      setDictError(`「${label}」已存在或与原名称相同。`)
+      return
+    }
+    setDisciplineDraft(null)
+    setNotice({ tone: 'ok', text: `已保存纪律项「${label}」。` })
+  }
+
+  const startTag = (original: string | null = null) => {
+    setDictError(null)
+    setTagDraft({ original, label: original ?? '' })
+  }
+
+  const submitTag = () => {
+    if (!tagDraft) return
+    const label = tagDraft.label.trim()
+    if (!label) {
+      setDictError('错误标签不能为空。')
+      return
+    }
+    const ok = tagDraft.original
+      ? renameMistakeTag(tagDraft.original, label)
+      : addMistakeTag(label)
+    if (!ok) {
+      setDictError(`「${label}」已存在或与原名称相同。`)
+      return
+    }
+    setTagDraft(null)
+    setNotice({ tone: 'ok', text: `已保存错误标签「${label}」。` })
+  }
+
+  const startChecklist = (setup: string) => {
+    setDictError(null)
+    const existing = config.checklists.find((entry) => entry.setup === setup)
+    setChecklistDraft({
+      setup,
+      text: existing ? existing.items.map((item) => item.label).join('\n') : '',
+    })
+  }
+
+  const submitChecklist = () => {
+    if (!checklistDraft) return
+    const existing = config.checklists.find((entry) => entry.setup === checklistDraft.setup)
+    const labels: string[] = []
+    for (const line of checklistDraft.text.split('\n')) {
+      const label = line.trim()
+      if (label && !labels.includes(label)) labels.push(label)
+    }
+    if (!labels.length) {
+      setDictError('至少保留一项检查内容。')
+      return
+    }
+    const items: ChecklistItem[] = labels.map((label) => ({
+      id: existing?.items.find((item) => item.label === label)?.id ?? uid('chk'),
+      label,
+    }))
+    saveChecklist({
+      id: existing?.id ?? uid('cl'),
+      setup: checklistDraft.setup,
+      items,
+    })
+    setChecklistDraft(null)
+    setNotice({
+      tone: 'ok',
+      text: `已保存「${checklistDraft.setup}」的盘前检查清单（${items.length} 项）。`,
     })
   }
 
@@ -608,7 +716,7 @@ export function Settings() {
         <div className="px-5 py-4">
           <h2 className="text-[12.5px] font-semibold text-ink">交易字典</h2>
           <p className="mt-0.5 text-[10.5px] text-faint">
-            合约、时段与形态都可以自己维护；改名会同步更新所有账户的历史交易。
+            合约、时段、形态、纪律项、错误标签与盘前检查清单都可以自己维护；改名会同步历史记录。
           </p>
         </div>
         <div className="divider" />
@@ -753,8 +861,219 @@ export function Settings() {
             )
           })}
         </div>
+        <div className="divider" />
+
+        <div className="grid grid-cols-2 gap-5 px-5 py-4">
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-[11.5px] font-medium text-ink">过程纪律项</div>
+                <div className="mt-0.5 text-[10px] text-faint">每笔交易逐项勾选，参与执行分</div>
+              </div>
+              <button
+                className="btn btn-ghost h-6 shrink-0 px-1.5 text-[10.5px]"
+                onClick={() => startDiscipline()}
+              >
+                <Plus size={12} />
+                添加
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {config.disciplineItems.map((item) => {
+                const usage = data.trades.filter(
+                  (trade) => typeof trade.discipline[item.id] === 'boolean',
+                ).length
+                const locked = usage > 0 || config.disciplineItems.length <= 1
+                return (
+                  <span
+                    key={item.id}
+                    className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-[10.5px] text-ink-2"
+                  >
+                    <button
+                      className="max-w-[150px] truncate hover:text-accent"
+                      title="点击改名"
+                      onClick={() => startDiscipline(item.id, item.label)}
+                    >
+                      {item.label}
+                    </button>
+                    {usage > 0 ? (
+                      <span className="num text-[9px] text-faint">{usage}</span>
+                    ) : null}
+                    <button
+                      className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-white hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
+                      title={
+                        usage > 0
+                          ? '已有交易记录该项，不能删除'
+                          : config.disciplineItems.length <= 1
+                            ? '至少保留一个纪律项'
+                            : '删除纪律项'
+                      }
+                      aria-label={`删除纪律项 ${item.label}`}
+                      disabled={locked}
+                      onClick={() => {
+                        if (deleteDisciplineItem(item.id)) {
+                          setNotice({ tone: 'ok', text: `已删除纪律项「${item.label}」。` })
+                        }
+                      }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                )
+              })}
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-center justify-between gap-2">
+              <div>
+                <div className="text-[11.5px] font-medium text-ink">错误标签</div>
+                <div className="mt-0.5 text-[10px] text-faint">标记过程错误，并计入错误成本</div>
+              </div>
+              <button
+                className="btn btn-ghost h-6 shrink-0 px-1.5 text-[10.5px]"
+                onClick={() => startTag()}
+              >
+                <Plus size={12} />
+                添加
+              </button>
+            </div>
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {config.mistakeTags.map((tag) => {
+                const usage = data.trades.filter((trade) => trade.mistakes?.includes(tag)).length
+                const reviewUsage = data.dailyReviews.filter((review) =>
+                  review.violations.includes(tag),
+                ).length
+                const locked = usage > 0 || reviewUsage > 0
+                return (
+                  <span
+                    key={tag}
+                    className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-[10.5px] text-ink-2"
+                  >
+                    <button
+                      className="max-w-[130px] truncate hover:text-accent"
+                      title="点击改名"
+                      onClick={() => startTag(tag)}
+                    >
+                      {tag}
+                    </button>
+                    {usage + reviewUsage > 0 ? (
+                      <span className="num text-[9px] text-faint">{usage + reviewUsage}</span>
+                    ) : null}
+                    <button
+                      className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-white hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
+                      title={locked ? '已有交易或复盘使用该标签，不能删除' : '删除错误标签'}
+                      aria-label={`删除错误标签 ${tag}`}
+                      disabled={locked}
+                      onClick={() => {
+                        if (deleteMistakeTag(tag)) {
+                          setNotice({ tone: 'ok', text: `已删除错误标签「${tag}」。` })
+                        }
+                      }}
+                    >
+                      <X size={10} />
+                    </button>
+                  </span>
+                )
+              })}
+              {!config.mistakeTags.length ? (
+                <span className="text-[10px] text-faint">还没有错误标签</span>
+              ) : null}
+            </div>
+          </div>
+        </div>
+
+        <div className="divider" />
+
+        <div className="px-5 py-4">
+          <div className="flex items-center justify-between gap-3">
+            <div>
+              <div className="text-[11.5px] font-medium text-ink">盘前检查清单</div>
+              <div className="mt-0.5 text-[10px] text-faint">
+                每个形态一组检查项，写每日复盘时按形态勾选；留空不会清空已有清单。
+              </div>
+            </div>
+            <span className="num shrink-0 text-[10px] text-faint">
+              {config.checklists.length} 个形态已配置
+            </span>
+          </div>
+          <div className="mt-2.5 overflow-hidden rounded-lg border border-line">
+            {config.setups.map((setup) => {
+              const checklist = config.checklists.find((entry) => entry.setup === setup)
+              return (
+                <div
+                  key={setup}
+                  className="flex items-center gap-2 border-b border-line/70 px-2.5 py-1.5 last:border-b-0"
+                >
+                  <ListChecks
+                    size={12}
+                    className={checklist ? 'shrink-0 text-accent' : 'shrink-0 text-faint'}
+                  />
+                  <span className="w-[104px] shrink-0 truncate text-[11px] text-ink">
+                    {setup}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[10px] text-faint">
+                    {checklist
+                      ? checklist.items.map((item) => item.label).join(' · ')
+                      : '未配置'}
+                  </span>
+                  {checklist ? (
+                    <span className="num shrink-0 text-[9.5px] text-faint">
+                      {checklist.items.length} 项
+                    </span>
+                  ) : null}
+                  {checklist && removingChecklist === checklist.id ? (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        className="btn btn-danger h-6 px-2 text-[10px]"
+                        onClick={() => {
+                          deleteChecklist(checklist.id)
+                          setRemovingChecklist(null)
+                          setNotice({
+                            tone: 'ok',
+                            text: `已删除「${setup}」的盘前检查清单。`,
+                          })
+                        }}
+                      >
+                        确认删除
+                      </button>
+                      <button
+                        className="btn btn-secondary h-6 px-2 text-[10px]"
+                        onClick={() => setRemovingChecklist(null)}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        className="icon-btn h-6 w-6"
+                        title={checklist ? '编辑检查清单' : '配置检查清单'}
+                        aria-label={`${checklist ? '编辑' : '配置'} ${setup} 的检查清单`}
+                        onClick={() => startChecklist(setup)}
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      {checklist ? (
+                        <button
+                          className="icon-btn h-6 w-6 hover:text-loss"
+                          title="删除检查清单"
+                          aria-label={`删除 ${setup} 的检查清单`}
+                          onClick={() => setRemovingChecklist(checklist.id)}
+                        >
+                          <Trash2 size={11} />
+                        </button>
+                      ) : null}
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        </div>
+
         <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] leading-relaxed text-faint">
-          点击时段或形态名称即可改名；仍被交易使用的条目不能删除，避免历史数据失去归属。
+          点击名称即可改名；纪律项改名不影响历史勾选，错误标签改名会同步历史交易与复盘。仍被使用的条目不能删除。
         </div>
       </section>
 
@@ -1125,6 +1444,148 @@ export function Settings() {
                 }}
               />
             </label>
+          </div>
+        </Modal>
+      ) : null}
+
+      {disciplineDraft ? (
+        <Modal
+          open
+          onClose={() => setDisciplineDraft(null)}
+          title={`${disciplineDraft.id ? '重命名' : '添加'}纪律项`}
+          subtitle="每笔交易会逐项勾选，参与执行分与纪律通过率"
+          width={380}
+          footer={
+            <div className="ml-auto flex items-center gap-2">
+              <button className="btn btn-secondary" onClick={() => setDisciplineDraft(null)}>
+                取消
+              </button>
+              <button className="btn btn-primary" onClick={submitDiscipline}>
+                <Check size={14} />
+                保存
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-3.5">
+            {dictError ? (
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+                {dictError}
+              </div>
+            ) : null}
+            <label className="block">
+              <span className="field-label">名称</span>
+              <input
+                name="discipline"
+                className="input"
+                autoFocus
+                placeholder="例如：进场前确认盈亏比"
+                value={disciplineDraft.label}
+                onChange={(event) =>
+                  setDisciplineDraft({ ...disciplineDraft, label: event.target.value })
+                }
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') submitDiscipline()
+                }}
+              />
+            </label>
+            <p className="text-[10px] leading-relaxed text-faint">
+              改名不会影响历史交易的勾选结果；已有交易记录的纪律项不能删除。
+            </p>
+          </div>
+        </Modal>
+      ) : null}
+
+      {tagDraft ? (
+        <Modal
+          open
+          onClose={() => setTagDraft(null)}
+          title={`${tagDraft.original ? '重命名' : '添加'}错误标签`}
+          subtitle={tagDraft.original ? '改名会同步历史交易与每日复盘' : '保存后可在记账与复盘时选择'}
+          width={380}
+          footer={
+            <div className="ml-auto flex items-center gap-2">
+              <button className="btn btn-secondary" onClick={() => setTagDraft(null)}>
+                取消
+              </button>
+              <button className="btn btn-primary" onClick={submitTag}>
+                <Check size={14} />
+                保存
+              </button>
+            </div>
+          }
+        >
+          <div className="space-y-3.5">
+            {dictError ? (
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+                {dictError}
+              </div>
+            ) : null}
+            <label className="block">
+              <span className="field-label">名称</span>
+              <input
+                name="mistakeTag"
+                className="input"
+                autoFocus
+                placeholder="例如：逆势加仓"
+                value={tagDraft.label}
+                onChange={(event) => setTagDraft({ ...tagDraft, label: event.target.value })}
+                onKeyDown={(event) => {
+                  if (event.key === 'Enter') submitTag()
+                }}
+              />
+            </label>
+            <p className="text-[10px] leading-relaxed text-faint">
+              仍被交易或复盘使用的标签不能删除，改名后历史记录会一并更新。
+            </p>
+          </div>
+        </Modal>
+      ) : null}
+
+      {checklistDraft ? (
+        <Modal
+          open
+          onClose={() => setChecklistDraft(null)}
+          title={`盘前检查清单 · ${checklistDraft.setup}`}
+          subtitle="每行一项；保存后会出现在每日复盘的盘前检查里"
+          width={480}
+          footer={
+            <>
+              <span className="text-[10.5px] text-faint">留空无法保存；删除请用列表右侧按钮</span>
+              <div className="flex items-center gap-2">
+                <button className="btn btn-secondary" onClick={() => setChecklistDraft(null)}>
+                  取消
+                </button>
+                <button className="btn btn-primary" onClick={submitChecklist}>
+                  <Check size={14} />
+                  保存清单
+                </button>
+              </div>
+            </>
+          }
+        >
+          <div className="space-y-3.5">
+            {dictError ? (
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+                {dictError}
+              </div>
+            ) : null}
+            <label className="block">
+              <span className="field-label">检查项</span>
+              <textarea
+                name="checklist"
+                className="textarea min-h-[160px]"
+                autoFocus
+                placeholder={'等待回撤到关键均线\n回撤低点未跌破前一波段\n目标至少为风险的 2 倍'}
+                value={checklistDraft.text}
+                onChange={(event) =>
+                  setChecklistDraft({ ...checklistDraft, text: event.target.value })
+                }
+              />
+            </label>
+            <p className="text-[10px] leading-relaxed text-faint">
+              新增或改名会生成新的检查项；已有复盘中的旧勾选会保留但不再显示。
+            </p>
           </div>
         </Modal>
       ) : null}

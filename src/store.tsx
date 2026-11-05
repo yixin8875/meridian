@@ -14,8 +14,10 @@ import type {
   CashFlow,
   ContractConfig,
   DailyReview,
+  DisciplineItem,
   JournalNote,
   RiskConfig,
+  SetupChecklist,
   Trade,
   TradingConfig,
 } from './types'
@@ -63,6 +65,14 @@ interface StoreValue {
   addSetup: (name: string) => boolean
   renameSetup: (from: string, to: string) => boolean
   deleteSetup: (name: string) => boolean
+  addDisciplineItem: (label: string) => boolean
+  renameDisciplineItem: (id: string, label: string) => boolean
+  deleteDisciplineItem: (id: string) => boolean
+  addMistakeTag: (label: string) => boolean
+  renameMistakeTag: (from: string, to: string) => boolean
+  deleteMistakeTag: (label: string) => boolean
+  saveChecklist: (checklist: SetupChecklist) => void
+  deleteChecklist: (id: string) => void
   addTrade: (trade: Trade) => void
   updateTrade: (trade: Trade) => void
   deleteTrade: (id: string) => void
@@ -420,6 +430,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         config: {
           ...prev.config,
           setups: prev.config.setups.map((entry) => (entry === from ? value : entry)),
+          checklists: prev.config.checklists.map((checklist) =>
+            checklist.setup === from ? { ...checklist, setup: value } : checklist,
+          ),
         },
         trades: prev.trades.map((trade) =>
           trade.setup === from ? { ...trade, setup: value } : trade,
@@ -439,9 +452,161 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         config: {
           ...prev.config,
           setups: prev.config.setups.filter((entry) => entry !== name),
+          checklists: prev.config.checklists.filter((checklist) => checklist.setup !== name),
         },
       }))
       return true
+    },
+    [mutate],
+  )
+
+  const addDisciplineItem = useCallback(
+    (label: string): boolean => {
+      const value = label.trim()
+      const items = latest.current.config.disciplineItems
+      if (!value || items.some((item) => item.label === value)) return false
+      const next: DisciplineItem = { id: uid('disc'), label: value }
+      mutate((prev) => ({
+        ...prev,
+        config: { ...prev.config, disciplineItems: [...prev.config.disciplineItems, next] },
+      }))
+      return true
+    },
+    [mutate],
+  )
+
+  const renameDisciplineItem = useCallback(
+    (id: string, label: string): boolean => {
+      const value = label.trim()
+      const items = latest.current.config.disciplineItems
+      const current = items.find((item) => item.id === id)
+      if (!current || !value || value === current.label) return false
+      if (items.some((item) => item.id !== id && item.label === value)) return false
+      mutate((prev) => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          disciplineItems: prev.config.disciplineItems.map((item) =>
+            item.id === id ? { ...item, label: value } : item,
+          ),
+        },
+      }))
+      return true
+    },
+    [mutate],
+  )
+
+  const deleteDisciplineItem = useCallback(
+    (id: string): boolean => {
+      const items = latest.current.config.disciplineItems
+      if (items.length <= 1 || !items.some((item) => item.id === id)) return false
+      // 历史交易里已经勾选过该项时不允许删除，避免统计口径断裂。
+      if (latest.current.trades.some((trade) => typeof trade.discipline[id] === 'boolean')) {
+        return false
+      }
+      mutate((prev) => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          disciplineItems: prev.config.disciplineItems.filter((item) => item.id !== id),
+        },
+      }))
+      return true
+    },
+    [mutate],
+  )
+
+  const addMistakeTag = useCallback(
+    (label: string): boolean => {
+      const value = label.trim()
+      if (!value || latest.current.config.mistakeTags.includes(value)) return false
+      mutate((prev) => ({
+        ...prev,
+        config: { ...prev.config, mistakeTags: [...prev.config.mistakeTags, value] },
+      }))
+      return true
+    },
+    [mutate],
+  )
+
+  const renameMistakeTag = useCallback(
+    (from: string, to: string): boolean => {
+      const value = to.trim()
+      if (!value || value === from) return false
+      if (!latest.current.config.mistakeTags.includes(from)) return false
+      if (latest.current.config.mistakeTags.includes(value)) return false
+      const dedupe = (tags: string[]) =>
+        [...new Set(tags.map((tag) => (tag === from ? value : tag)))]
+      mutate((prev) => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          mistakeTags: prev.config.mistakeTags.map((tag) => (tag === from ? value : tag)),
+        },
+        trades: prev.trades.map((trade) =>
+          trade.mistakes?.includes(from) ? { ...trade, mistakes: dedupe(trade.mistakes) } : trade,
+        ),
+        dailyReviews: prev.dailyReviews.map((review) =>
+          review.violations.includes(from)
+            ? { ...review, violations: dedupe(review.violations) }
+            : review,
+        ),
+      }))
+      return true
+    },
+    [mutate],
+  )
+
+  const deleteMistakeTag = useCallback(
+    (label: string): boolean => {
+      if (!latest.current.config.mistakeTags.includes(label)) return false
+      const used =
+        latest.current.trades.some((trade) => trade.mistakes?.includes(label)) ||
+        latest.current.dailyReviews.some((review) => review.violations.includes(label))
+      if (used) return false
+      mutate((prev) => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          mistakeTags: prev.config.mistakeTags.filter((tag) => tag !== label),
+        },
+      }))
+      return true
+    },
+    [mutate],
+  )
+
+  const saveChecklist = useCallback(
+    (checklist: SetupChecklist) => {
+      const items = checklist.items
+        .map((item) => ({ ...item, label: item.label.trim() }))
+        .filter((item) => item.label)
+      mutate((prev) => {
+        if (!prev.config.setups.includes(checklist.setup)) return prev
+        const rest = prev.config.checklists.filter(
+          (entry) => entry.id !== checklist.id && entry.setup !== checklist.setup,
+        )
+        return {
+          ...prev,
+          config: {
+            ...prev.config,
+            checklists: items.length ? [...rest, { ...checklist, items }] : rest,
+          },
+        }
+      })
+    },
+    [mutate],
+  )
+
+  const deleteChecklist = useCallback(
+    (id: string) => {
+      mutate((prev) => ({
+        ...prev,
+        config: {
+          ...prev.config,
+          checklists: prev.config.checklists.filter((entry) => entry.id !== id),
+        },
+      }))
     },
     [mutate],
   )
@@ -689,6 +854,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addSetup,
       renameSetup,
       deleteSetup,
+      addDisciplineItem,
+      renameDisciplineItem,
+      deleteDisciplineItem,
+      addMistakeTag,
+      renameMistakeTag,
+      deleteMistakeTag,
+      saveChecklist,
+      deleteChecklist,
       trades,
       notes,
       reviews,
@@ -734,6 +907,14 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addSetup,
       renameSetup,
       deleteSetup,
+      addDisciplineItem,
+      renameDisciplineItem,
+      deleteDisciplineItem,
+      addMistakeTag,
+      renameMistakeTag,
+      deleteMistakeTag,
+      saveChecklist,
+      deleteChecklist,
       trades,
       notes,
       reviews,

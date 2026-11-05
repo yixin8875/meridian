@@ -3,17 +3,27 @@ import type {
   AppData,
   CashFlow,
   ChartRef,
+  ChecklistItem,
   ContractConfig,
   DailyReview,
+  Discipline,
+  DisciplineItem,
   JournalNote,
   RiskConfig,
+  SetupChecklist,
   Trade,
   TradingConfig,
 } from '../types'
-import { CASH_FLOW_KINDS, DEFAULT_CONFIG, DEFAULT_RISK } from '../data/contracts'
+import {
+  CASH_FLOW_KINDS,
+  DEFAULT_CONFIG,
+  DEFAULT_DISCIPLINE_ITEMS,
+  DEFAULT_MISTAKE_TAGS,
+  DEFAULT_RISK,
+} from '../data/contracts'
 
 const LOCAL_KEY = 'meridian.trader.v2'
-export const DATA_VERSION = 6
+export const DATA_VERSION = 7
 
 function isoToday(): string {
   const now = new Date()
@@ -34,6 +44,9 @@ const EMPTY_CONFIG: TradingConfig = {
   contracts: DEFAULT_CONFIG.contracts.map((contract) => ({ ...contract })),
   sessions: [...DEFAULT_CONFIG.sessions],
   setups: [...DEFAULT_CONFIG.setups],
+  disciplineItems: DEFAULT_CONFIG.disciplineItems.map((item) => ({ ...item })),
+  mistakeTags: [...DEFAULT_CONFIG.mistakeTags],
+  checklists: [],
 }
 
 export const EMPTY_DATA: AppData = {
@@ -130,16 +143,106 @@ function normalizeNames(raw: unknown): string[] {
   return out
 }
 
+function normalizeDisciplineItems(raw: unknown): DisciplineItem[] {
+  if (!Array.isArray(raw)) return []
+  const seenId = new Set<string>()
+  const seenLabel = new Set<string>()
+  const out: DisciplineItem[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const obj = entry as Partial<DisciplineItem>
+    const id = typeof obj.id === 'string' ? obj.id.trim() : ''
+    const label = typeof obj.label === 'string' ? obj.label.trim() : ''
+    if (!id || !label || seenId.has(id) || seenLabel.has(label)) continue
+    seenId.add(id)
+    seenLabel.add(label)
+    out.push({ id, label })
+  }
+  return out
+}
+
+function normalizeChecklistItems(raw: unknown, fallbackId: string): ChecklistItem[] {
+  if (!Array.isArray(raw)) return []
+  const seenId = new Set<string>()
+  const seenLabel = new Set<string>()
+  const out: ChecklistItem[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const obj = entry as Partial<ChecklistItem>
+    const label = typeof obj.label === 'string' ? obj.label.trim() : ''
+    const id =
+      typeof obj.id === 'string' && obj.id.trim() ? obj.id.trim() : `${fallbackId}_${out.length + 1}`
+    if (!label || seenId.has(id) || seenLabel.has(label)) continue
+    seenId.add(id)
+    seenLabel.add(label)
+    out.push({ id, label })
+  }
+  return out
+}
+
+function normalizeChecklists(raw: unknown, setups: string[]): SetupChecklist[] {
+  if (!Array.isArray(raw)) return []
+  const knownSetups = new Set(setups)
+  const seenId = new Set<string>()
+  const seenSetup = new Set<string>()
+  const out: SetupChecklist[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const obj = entry as Partial<SetupChecklist>
+    const setup = typeof obj.setup === 'string' ? obj.setup.trim() : ''
+    if (!setup || !knownSetups.has(setup) || seenSetup.has(setup)) continue
+    const id =
+      typeof obj.id === 'string' && obj.id.trim() ? obj.id.trim() : `cl_${out.length + 1}`
+    if (seenId.has(id)) continue
+    const items = normalizeChecklistItems(obj.items, id)
+    if (!items.length) continue
+    seenId.add(id)
+    seenSetup.add(setup)
+    out.push({ id, setup, items })
+  }
+  return out
+}
+
 function normalizeConfig(raw: unknown): TradingConfig {
   const obj = (raw ?? {}) as Partial<TradingConfig>
   const contracts = normalizeContracts(obj.contracts)
   const sessions = normalizeNames(obj.sessions)
   const setups = normalizeNames(obj.setups)
+  const finalSetups = setups.length ? setups : [...DEFAULT_CONFIG.setups]
+  const disciplineItems = Array.isArray(obj.disciplineItems)
+    ? normalizeDisciplineItems(obj.disciplineItems)
+    : []
+  const mistakeTags = Array.isArray(obj.mistakeTags) ? normalizeNames(obj.mistakeTags) : null
   return {
     contracts: contracts.length ? contracts : DEFAULT_CONFIG.contracts.map((item) => ({ ...item })),
     sessions: sessions.length ? sessions : [...DEFAULT_CONFIG.sessions],
-    setups: setups.length ? setups : [...DEFAULT_CONFIG.setups],
+    setups: finalSetups,
+    disciplineItems: disciplineItems.length
+      ? disciplineItems
+      : DEFAULT_DISCIPLINE_ITEMS.map((item) => ({ ...item })),
+    mistakeTags: mistakeTags ?? [...DEFAULT_MISTAKE_TAGS],
+    checklists: normalizeChecklists(obj.checklists, finalSetups),
   }
+}
+
+function normalizeDiscipline(raw: unknown): Discipline {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Discipline = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (typeof value === 'boolean') out[key] = value
+  }
+  return out
+}
+
+function normalizeChecks(raw: unknown): Record<string, string[]> {
+  if (!raw || typeof raw !== 'object' || Array.isArray(raw)) return {}
+  const out: Record<string, string[]> = {}
+  for (const [key, value] of Object.entries(raw)) {
+    if (!Array.isArray(value)) continue
+    const ids = normalizeNames(value)
+    if (ids.length) out[key] = ids
+  }
+  return out
 }
 
 function normalizeReviews(raw: unknown, accountIds: Set<string>): DailyReview[] {
@@ -174,6 +277,7 @@ function normalizeReviews(raw: unknown, accountIds: Set<string>): DailyReview[] 
       executionScore: score,
       violations: normalizeNames(obj.violations),
       improvement: typeof obj.improvement === 'string' ? obj.improvement : '',
+      checks: normalizeChecks(obj.checks),
       updatedAt:
         typeof obj.updatedAt === 'string' && obj.updatedAt ? obj.updatedAt : new Date().toISOString(),
     })
@@ -287,6 +391,7 @@ export function normalizeData(raw: unknown): AppData {
             typeof trade.accountId === 'string' && ids.has(trade.accountId)
               ? trade.accountId
               : accounts[0]!.id,
+          discipline: normalizeDiscipline(trade.discipline),
           mistakes: normalizeNames(trade.mistakes),
           charts: normalizeCharts(trade.charts),
         }))

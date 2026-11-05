@@ -1,7 +1,7 @@
 import type {
   CashFlowKind,
   ContractConfig,
-  Discipline,
+  DisciplineItem,
   Mood,
   NoteKind,
   RiskConfig,
@@ -68,20 +68,21 @@ export const CASH_FLOW_KINDS: {
 ]
 
 /** 交易级错误标签：用于复盘时区分“结果不好”和“过程做错”。 */
-export const MISTAKE_TAGS = [
+export const DEFAULT_MISTAKE_TAGS: string[] = [
   '追单',
   '提前入场',
   '移动止损',
   '过度交易',
   '报复交易',
   '计划外交易',
-] as const
+]
 
-export const DISCIPLINE_ITEMS: { key: keyof Discipline; label: string; short: string }[] = [
-  { key: 'stopPlanned', label: '进场前已定义止损', short: '止损事先定义' },
-  { key: 'stopHonored', label: '止损未被移动或取消', short: '止损未被移动' },
-  { key: 'sizePlanned', label: '仓位符合计划风险', short: '仓位符合计划' },
-  { key: 'journaled', label: '写下进场理由与复盘', short: '写下进场理由' },
+/** 默认过程纪律项；id 沿用旧字段名，历史交易无需迁移。 */
+export const DEFAULT_DISCIPLINE_ITEMS: DisciplineItem[] = [
+  { id: 'stopPlanned', label: '进场前已定义止损' },
+  { id: 'stopHonored', label: '止损未被移动或取消' },
+  { id: 'sizePlanned', label: '仓位符合计划风险' },
+  { id: 'journaled', label: '写下进场理由与复盘' },
 ]
 
 /** 用户可管理的默认字典；读取旧数据或首次启动时使用。 */
@@ -93,6 +94,9 @@ export const DEFAULT_CONFIG: TradingConfig = {
   })),
   sessions: [...SESSIONS],
   setups: [...SETUPS],
+  disciplineItems: DEFAULT_DISCIPLINE_ITEMS.map((item) => ({ ...item })),
+  mistakeTags: [...DEFAULT_MISTAKE_TAGS],
+  checklists: [],
 }
 
 export function pointValueOf(symbol: string, contracts?: ContractConfig[]): number {

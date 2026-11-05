@@ -1,7 +1,6 @@
 import { useEffect, useMemo, useState } from 'react'
 import { BookOpenCheck, Check, Trash2, X } from 'lucide-react'
 import type { DailyReview } from '../types'
-import { MISTAKE_TAGS } from '../data/contracts'
 import { computeStats, mistakeCost } from '../lib/stats'
 import {
   fmtDateCN,
@@ -35,7 +34,22 @@ function blankReview(date: string, accountId: string, score: number): DailyRevie
     executionScore: score,
     violations: [],
     improvement: '',
+    checks: {},
     updatedAt: new Date().toISOString(),
+  }
+}
+
+function cloneChecks(checks: DailyReview['checks'] | undefined): DailyReview['checks'] {
+  const out: DailyReview['checks'] = {}
+  for (const [key, value] of Object.entries(checks ?? {})) out[key] = [...value]
+  return out
+}
+
+function withChecks(review: DailyReview): DailyReview {
+  return {
+    ...review,
+    violations: [...review.violations],
+    checks: cloneChecks(review.checks),
   }
 }
 
@@ -48,7 +62,7 @@ export function DayReviewDialog({
   onClose: () => void
   onOpenTrades: (date: string) => void
 }) {
-  const { account, trades, reviews, saveDailyReview, deleteDailyReview } = useApp()
+  const { account, trades, reviews, saveDailyReview, deleteDailyReview, config } = useApp()
   const review = reviews.find((entry) => entry.date === date)
   const dayTrades = useMemo(() => trades.filter((trade) => trade.date === date), [trades, date])
   const dayStats = useMemo(
@@ -68,19 +82,13 @@ export function DayReviewDialog({
   }, [trades, date, account.startingEquity])
 
   const [form, setForm] = useState<DailyReview>(() =>
-    review
-      ? { ...review, violations: [...review.violations] }
-      : blankReview(date, account.id, defaultScore),
+    review ? withChecks(review) : blankReview(date, account.id, defaultScore),
   )
   const [error, setError] = useState<string | null>(null)
   const [confirmDelete, setConfirmDelete] = useState(false)
 
   useEffect(() => {
-    setForm(
-      review
-        ? { ...review, violations: [...review.violations] }
-        : blankReview(date, account.id, defaultScore),
-    )
+    setForm(review ? withChecks(review) : blankReview(date, account.id, defaultScore))
     setError(null)
     setConfirmDelete(false)
   }, [date, review?.id, account.id, defaultScore])
@@ -91,6 +99,7 @@ export function DayReviewDialog({
   const hasContent =
     Boolean(form.marketContext.trim() || form.plan.trim() || form.improvement.trim()) ||
     form.violations.length > 0 ||
+    Object.values(form.checks).some((checked) => checked.length > 0) ||
     form.executionScore !== defaultScore
 
   const save = () => {
@@ -114,6 +123,19 @@ export function DayReviewDialog({
         ? form.violations.filter((item) => item !== tag)
         : [...form.violations, tag],
     )
+  }
+
+  const toggleCheck = (checklistId: string, itemId: string) => {
+    setForm((prev) => {
+      const checked = prev.checks[checklistId] ?? []
+      const next = checked.includes(itemId)
+        ? checked.filter((id) => id !== itemId)
+        : [...checked, itemId]
+      const checks = { ...prev.checks }
+      if (next.length) checks[checklistId] = next
+      else delete checks[checklistId]
+      return { ...prev, checks }
+    })
   }
 
   return (
@@ -258,7 +280,7 @@ export function DayReviewDialog({
             <span className="text-[10px] text-faint">点击标记当天出现的错误</span>
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5">
-            {MISTAKE_TAGS.map((tag) => {
+            {config.mistakeTags.map((tag) => {
               const active = form.violations.includes(tag)
               return (
                 <button
@@ -275,8 +297,71 @@ export function DayReviewDialog({
                 </button>
               )
             })}
+            {!config.mistakeTags.length ? (
+              <span className="text-[10px] text-faint">还没有错误标签，可在设置中维护。</span>
+            ) : null}
           </div>
         </div>
+
+        {config.checklists.length ? (
+          <div>
+            <div className="flex flex-wrap items-baseline justify-between gap-2">
+              <span className="field-label">盘前检查清单</span>
+              <span className="text-[10px] text-faint">按形态勾选当天开盘前的检查项</span>
+            </div>
+            <div className="mt-1 space-y-2">
+              {config.checklists.map((checklist) => {
+                const checked = form.checks[checklist.id] ?? []
+                const done = checklist.items.filter((item) => checked.includes(item.id)).length
+                return (
+                  <div
+                    key={checklist.id}
+                    className="rounded-lg border border-line bg-list/70 px-3 py-2.5"
+                  >
+                    <div className="flex items-center justify-between gap-2">
+                      <span className="text-[11px] font-medium text-ink">{checklist.setup}</span>
+                      <span
+                        className={`num text-[10px] ${
+                          done === checklist.items.length ? 'text-gain' : 'text-faint'
+                        }`}
+                      >
+                        {done} / {checklist.items.length}
+                      </span>
+                    </div>
+                    <div className="mt-1.5 grid grid-cols-2 gap-1.5">
+                      {checklist.items.map((item) => {
+                        const active = checked.includes(item.id)
+                        return (
+                          <button
+                            type="button"
+                            key={item.id}
+                            onClick={() => toggleCheck(checklist.id, item.id)}
+                            className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-[10.5px] transition-colors ${
+                              active
+                                ? 'border-gain/25 bg-gain-soft/60 text-ink'
+                                : 'border-line bg-white text-muted hover:bg-hover'
+                            }`}
+                          >
+                            <span
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border ${
+                                active
+                                  ? 'border-gain bg-gain text-white'
+                                  : 'border-line-2 bg-white'
+                              }`}
+                            >
+                              {active ? <Check size={9} strokeWidth={3} /> : null}
+                            </span>
+                            <span className="min-w-0 flex-1">{item.label}</span>
+                          </button>
+                        )
+                      })}
+                    </div>
+                  </div>
+                )
+              })}
+            </div>
+          </div>
+        ) : null}
 
         <label className="block">
           <span className="field-label">明日改进</span>

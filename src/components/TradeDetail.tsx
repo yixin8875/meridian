@@ -1,7 +1,7 @@
 import { useEffect, useState } from 'react'
 import { Check, ListX, Pencil, Trash2 } from 'lucide-react'
 import type { Trade } from '../types'
-import { DISCIPLINE_ITEMS, pointValueOf } from '../data/contracts'
+import { pointValueOf } from '../data/contracts'
 import { useApp } from '../store'
 import { fmtDateFullCN, fmtDuration, fmtMoney, fmtSignedMoney, minutesOf } from '../lib/format'
 import { EmptyState, IconBadge, Metric, RValue, SideBadge } from './primitives'
@@ -200,11 +200,11 @@ export function TradeDetail({
           <span className="text-[10.5px] text-faint">记录“做对了什么”，而不只是盈亏</span>
         </div>
         <div className="mt-3 grid grid-cols-2 gap-2">
-          {DISCIPLINE_ITEMS.map((item) => {
-            const ok = trade.discipline[item.key]
+          {config.disciplineItems.map((item) => {
+            const ok = Boolean(trade.discipline[item.id])
             return (
               <div
-                key={item.key}
+                key={item.id}
                 className={`flex items-center gap-2 rounded-lg border px-3 py-2.5 text-[11.5px] ${
                   ok
                     ? 'border-line bg-list text-ink-2'
