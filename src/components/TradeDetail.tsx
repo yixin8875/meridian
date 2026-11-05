@@ -174,6 +174,16 @@ export function TradeDetail({
           <Metric label="手续费">${fmtMoney(trade.fees)}</Metric>
           <Metric label="交易评分">{trade.grade} 级</Metric>
           <Metric label="盈亏">{trade.pnl >= 0 ? '盈利' : '亏损'}</Metric>
+          {trade.maeR > 0 ? (
+            <Metric label="最大不利偏移">
+              <span className="text-loss">−{trade.maeR.toFixed(2)}R</span>
+            </Metric>
+          ) : null}
+          {trade.mfeR > 0 ? (
+            <Metric label="最大有利偏移">
+              <span className="text-gain">+{trade.mfeR.toFixed(2)}R</span>
+            </Metric>
+          ) : null}
         </div>
       </section>
 

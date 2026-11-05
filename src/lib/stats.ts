@@ -1,4 +1,4 @@
-import type { CashFlow, DisciplineItem, Range, RiskConfig, Trade } from '../types'
+import type { CashFlow, DisciplineItem, Range, RiskConfig, Side, Trade } from '../types'
 import { minutesOf, shiftISO, todayISO } from './format'
 
 export interface EquityPoint {
@@ -496,6 +496,222 @@ export function mistakeCost(trades: Trade[]): MistakeSummary {
         winRate: entry.count ? (entry.wins / entry.count) * 100 : 0,
       }))
       .sort((a, b) => a.avgR - b.avgR),
+  }
+}
+
+export interface SideStat {
+  key: Side
+  label: string
+  count: number
+  wins: number
+  winRate: number
+  netPnl: number
+  avgR: number
+}
+
+/** 多空方向的胜率、净盈亏与平均 R。 */
+export function sideStats(trades: Trade[]): SideStat[] {
+  const closed = closedTrades(trades)
+  return (['L', 'S'] as const).map((side) => {
+    const items = closed.filter((trade) => trade.side === side)
+    const wins = items.filter((trade) => trade.pnl > 0).length
+    const netPnl = items.reduce((sum, trade) => sum + trade.pnl, 0)
+    const sumR = items.reduce((sum, trade) => sum + trade.rMultiple, 0)
+    return {
+      key: side,
+      label: side === 'L' ? '做多' : '做空',
+      count: items.length,
+      wins,
+      winRate: items.length ? (wins / items.length) * 100 : 0,
+      netPnl: Math.round(netPnl * 100) / 100,
+      avgR: items.length ? sumR / items.length : 0,
+    }
+  })
+}
+
+/** 按入场小时聚合；key 形如「09:00–10:00」。 */
+export function hourStats(trades: Trade[]): GroupStat[] {
+  const map = new Map<number, { count: number; wins: number; pnl: number; sumR: number }>()
+  for (const trade of closedTrades(trades)) {
+    const minutes = minutesOf(trade.entryTime)
+    if (minutes === null) continue
+    const hour = Math.floor(minutes / 60)
+    const entry = map.get(hour) ?? { count: 0, wins: 0, pnl: 0, sumR: 0 }
+    entry.count += 1
+    entry.pnl += trade.pnl
+    entry.sumR += trade.rMultiple
+    if (trade.pnl > 0) entry.wins += 1
+    map.set(hour, entry)
+  }
+  return [...map.entries()]
+    .sort((a, b) => a[0] - b[0])
+    .map(([hour, entry]) => {
+      const label = `${String(hour).padStart(2, '0')}:00–${String(hour + 1).padStart(2, '0')}:00`
+      return {
+        key: label,
+        count: entry.count,
+        wins: entry.wins,
+        netPnl: Math.round(entry.pnl * 100) / 100,
+        sumR: entry.sumR,
+        avgR: entry.count ? entry.sumR / entry.count : 0,
+        winRate: entry.count ? (entry.wins / entry.count) * 100 : 0,
+      }
+    })
+}
+
+export interface StreakStats {
+  maxWins: number
+  maxLosses: number
+  currentWins: number
+  currentLosses: number
+}
+
+/** 按平仓顺序统计连续盈利 / 连续亏损。 */
+export function streakStats(trades: Trade[]): StreakStats {
+  let maxWins = 0
+  let maxLosses = 0
+  let wins = 0
+  let losses = 0
+  for (const trade of closedTrades(trades)) {
+    if (trade.pnl > 0) {
+      wins += 1
+      losses = 0
+      maxWins = Math.max(maxWins, wins)
+    } else if (trade.pnl < 0) {
+      losses += 1
+      wins = 0
+      maxLosses = Math.max(maxLosses, losses)
+    } else {
+      wins = 0
+      losses = 0
+    }
+  }
+  return { maxWins, maxLosses, currentWins: wins, currentLosses: losses }
+}
+
+export interface DrawdownDuration {
+  /** 最长一次峰值到恢复的日历天数。 */
+  maxDays: number
+  maxPeak: string
+  maxTrough: string
+  maxRecovery: string | null
+  /** 截至最后一个点仍未恢复的回撤天数。 */
+  currentDays: number
+  currentPeak: string
+}
+
+function daysBetween(from: string, to: string): number {
+  const a = Date.parse(`${from}T00:00:00Z`)
+  const b = Date.parse(`${to}T00:00:00Z`)
+  if (!Number.isFinite(a) || !Number.isFinite(b)) return 0
+  return Math.max(0, Math.round((b - a) / 86_400_000))
+}
+
+/** 用剔除出入金的交易权益计算回撤持续时间。 */
+export function drawdownDuration(points: EquityPoint[]): DrawdownDuration {
+  if (points.length < 2) {
+    return {
+      maxDays: 0,
+      maxPeak: '',
+      maxTrough: '',
+      maxRecovery: null,
+      currentDays: 0,
+      currentPeak: points[0]?.date ?? '',
+    }
+  }
+  let peakValue = points[0]!.tradingEquity
+  let peakDate = points[0]!.date
+  let inDrawdown = false
+  let startPeak = peakDate
+  let troughValue = peakValue
+  let troughDate = peakDate
+  let best: DrawdownDuration = {
+    maxDays: 0,
+    maxPeak: '',
+    maxTrough: '',
+    maxRecovery: null,
+    currentDays: 0,
+    currentPeak: peakDate,
+  }
+  for (const point of points.slice(1)) {
+    if (point.tradingEquity >= peakValue) {
+      if (inDrawdown) {
+        const days = daysBetween(startPeak, point.date)
+        if (days > best.maxDays) {
+          best = {
+            ...best,
+            maxDays: days,
+            maxPeak: startPeak,
+            maxTrough: troughDate,
+            maxRecovery: point.date,
+          }
+        }
+        inDrawdown = false
+      }
+      peakValue = point.tradingEquity
+      peakDate = point.date
+      troughValue = peakValue
+      troughDate = peakDate
+    } else {
+      if (!inDrawdown) {
+        inDrawdown = true
+        startPeak = peakDate
+        troughValue = point.tradingEquity
+        troughDate = point.date
+      } else if (point.tradingEquity < troughValue) {
+        troughValue = point.tradingEquity
+        troughDate = point.date
+      }
+    }
+  }
+  if (inDrawdown) {
+    const days = daysBetween(startPeak, points[points.length - 1]!.date)
+    if (days > best.maxDays) {
+      best = {
+        ...best,
+        maxDays: days,
+        maxPeak: startPeak,
+        maxTrough: troughDate,
+        maxRecovery: null,
+      }
+    }
+    best = { ...best, currentDays: days, currentPeak: startPeak }
+  }
+  return best
+}
+
+export interface ExcursionStats {
+  count: number
+  avgMaeR: number
+  avgMfeR: number
+  winMaeR: number
+  lossMaeR: number
+  /** 已实现 R ÷ MFE R 的平均捕获率（%）。 */
+  capture: number
+}
+
+/** MAE / MFE 只统计填写了对应字段的已平仓交易。 */
+export function excursionStats(trades: Trade[]): ExcursionStats {
+  const closed = closedTrades(trades)
+  const withMae = closed.filter((trade) => (trade.maeR ?? 0) > 0)
+  const withMfe = closed.filter((trade) => (trade.mfeR ?? 0) > 0)
+  const avg = (items: Trade[], pick: (trade: Trade) => number) =>
+    items.length ? items.reduce((sum, trade) => sum + pick(trade), 0) / items.length : 0
+  const mfeSum = withMfe.reduce((sum, trade) => sum + trade.mfeR, 0)
+  const realized = withMfe.reduce((sum, trade) => sum + trade.rMultiple, 0)
+  return {
+    count: closed.filter((trade) => (trade.maeR ?? 0) > 0 || (trade.mfeR ?? 0) > 0).length,
+    avgMaeR: avg(withMae, (trade) => trade.maeR),
+    avgMfeR: avg(withMfe, (trade) => trade.mfeR),
+    winMaeR: avg(
+      withMae.filter((trade) => trade.pnl > 0),
+      (trade) => trade.maeR,
+    ),
+    lossMaeR: avg(
+      withMae.filter((trade) => trade.pnl < 0),
+      (trade) => trade.maeR,
+    ),
+    capture: mfeSum > 0 ? (realized / mfeSum) * 100 : 0,
   }
 }
 

@@ -35,6 +35,8 @@ interface FormState {
   note: string
   discipline: Discipline
   mistakes: string[]
+  maeR: string
+  mfeR: string
 }
 
 const BLANK: FormState = {
@@ -55,6 +57,8 @@ const BLANK: FormState = {
   note: '',
   discipline: {},
   mistakes: [],
+  maeR: '',
+  mfeR: '',
 }
 
 function defaultDiscipline(items: TradingConfig['disciplineItems']): Discipline {
@@ -93,6 +97,8 @@ function toForm(trade: Trade | null, config: TradingConfig): FormState {
     note: trade.note,
     discipline: { ...trade.discipline },
     mistakes: [...(trade.mistakes ?? [])],
+    maeR: trade.maeR ? String(trade.maeR) : '',
+    mfeR: trade.mfeR ? String(trade.mfeR) : '',
   }
 }
 
@@ -236,6 +242,9 @@ export function TradeForm({
     const r = risk > 0 ? gross / risk : 0
     const session = form.session || config.sessions[0] || '早盘'
     const riskPct = equity > 0 ? (risk / equity) * 100 : 0
+    const maeR = Math.max(0, num(form.maeR))
+    const mfeR = Math.max(0, num(form.mfeR))
+    const capture = mfeR > 0 ? (r / mfeR) * 100 : 0
     const suggested = suggestedQty(
       equity,
       account.risk.riskPerTradePct,
@@ -253,6 +262,9 @@ export function TradeForm({
       riskPct,
       suggested,
       r,
+      maeR,
+      mfeR,
+      capture,
       session,
       valid:
         Boolean(form.date) &&
@@ -315,6 +327,8 @@ export function TradeForm({
       status: form.status,
       discipline: form.discipline,
       mistakes: form.mistakes,
+      maeR: Math.round(calc.maeR * 100) / 100,
+      mfeR: Math.round(calc.mfeR * 100) / 100,
       note: form.note.trim(),
       grade: gradeOf(calc.r),
       charts,
@@ -600,6 +614,46 @@ export function TradeForm({
                 {fmtSignedMoney(calc.gross, true)} / ${fmtMoney(calc.fees)}
               </span>
             </div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-4 gap-3">
+          <label>
+            <span className="field-label">最大不利偏移（R）</span>
+            <input
+              type="number"
+              name="maeR"
+              min={0}
+              step="0.05"
+              className="input num"
+              placeholder="可选"
+              value={form.maeR}
+              onChange={(event) => set('maeR', event.target.value)}
+            />
+          </label>
+          <label>
+            <span className="field-label">最大有利偏移（R）</span>
+            <input
+              type="number"
+              name="mfeR"
+              min={0}
+              step="0.05"
+              className="input num"
+              placeholder="可选"
+              value={form.mfeR}
+              onChange={(event) => set('mfeR', event.target.value)}
+            />
+          </label>
+          <div className="col-span-2 rounded-md border border-line bg-list px-3 py-2">
+            <div className="flex items-center justify-between text-[10.5px] text-faint">
+              <span>MFE 捕获率</span>
+              <span className="num text-ink-2">
+                {calc.mfeR > 0 ? `${calc.capture.toFixed(0)}%` : '—'}
+              </span>
+            </div>
+            <p className="mt-1 text-[9.5px] leading-relaxed text-faint">
+              记录持仓期间的最差 / 最好浮动，用来判断止损位置与离场是否过早。
+            </p>
           </div>
         </div>
 

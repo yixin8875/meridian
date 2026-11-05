@@ -42,6 +42,14 @@ const ALIASES: Record<string, string> = {
   r: 'rMultiple',
   r倍数: 'rMultiple',
   rmultiple: 'rMultiple',
+  最大不利偏移: 'maeR',
+  'mae(r)': 'maeR',
+  maer: 'maeR',
+  mae: 'maeR',
+  最大有利偏移: 'mfeR',
+  'mfe(r)': 'mfeR',
+  mfer: 'mfeR',
+  mfe: 'mfeR',
   盈亏: 'pnl',
   '盈亏(usd)': 'pnl',
   pnl: 'pnl',
@@ -210,6 +218,8 @@ export function importTradesCsv(
         : 0
     const entryTime = normalizeTime(get(row, 'entryTime')) || '09:30'
     const note = get(row, 'note')
+    const maeR = get(row, 'maeR') ? Math.max(0, num(get(row, 'maeR'))) : 0
+    const mfeR = get(row, 'mfeR') ? Math.max(0, num(get(row, 'mfeR'))) : 0
     const mistakes = [
       ...new Set(
         get(row, 'mistakes')
@@ -246,6 +256,8 @@ export function importTradesCsv(
       status,
       discipline,
       mistakes,
+      maeR,
+      mfeR,
       note,
       grade: gradeOf(rMultiple),
       charts: [],
@@ -270,6 +282,8 @@ export function tradesToCsv(trades: Trade[]): string {
     '时段',
     '状态',
     'R',
+    '最大不利偏移(R)',
+    '最大有利偏移(R)',
     '盈亏(USD)',
     '手续费',
     '错误标签',
@@ -289,6 +303,8 @@ export function tradesToCsv(trades: Trade[]): string {
     t.session,
     t.status === 'open' ? '持仓中' : '已平仓',
     t.rMultiple.toFixed(2),
+    (t.maeR ?? 0).toFixed(2),
+    (t.mfeR ?? 0).toFixed(2),
     t.pnl.toFixed(2),
     t.fees.toFixed(2),
     (t.mistakes ?? []).join('|'),

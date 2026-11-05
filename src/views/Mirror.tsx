@@ -2,22 +2,36 @@ import { useMemo } from 'react'
 import { Sparkles } from 'lucide-react'
 import { useApp } from '../store'
 import {
+  buildEquity,
   computeStats,
   disciplineRates,
+  drawdownDuration,
+  excursionStats,
   groupTrades,
+  hourStats,
   mistakeCost,
   rHistogram,
+  sideStats,
+  streakStats,
   weekStats,
 } from '../lib/stats'
 import { fmtDateFullCN, fmtDuration, fmtMoney, fmtPct, fmtR, todayISO } from '../lib/format'
 import { EmptyState, Pnl } from '../components/primitives'
+
+const MIN_SETUP_SAMPLE = 8
+
+function confidenceOf(count: number): { label: string; tone: string } {
+  if (count >= 20) return { label: '高置信', tone: 'text-gain' }
+  if (count >= MIN_SETUP_SAMPLE) return { label: '中等置信', tone: 'text-accent' }
+  return { label: '样本不足', tone: 'text-warn' }
+}
 
 export function Mirror() {
   const { trades, account, config } = useApp()
 
   const model = useMemo(() => {
     const stats = computeStats(trades, account.startingEquity)
-    const setups = groupTrades(trades, (trade) => trade.setup)
+    const setups = groupTrades(trades, (trade) => trade.setup).sort((a, b) => b.avgR - a.avgR)
     const sessions = groupTrades(trades, (trade) => trade.session)
     const week = weekStats(trades)
     const hist = rHistogram(trades)
@@ -27,6 +41,17 @@ export function Mirror() {
     const activeWeek = week.filter((day) => day.count > 0)
     const bestDay = [...activeWeek].sort((a, b) => b.avgR - a.avgR)[0]
     const worstDay = [...activeWeek].sort((a, b) => a.avgR - b.avgR)[0]
+    const qualified = setups.filter((setup) => setup.count >= MIN_SETUP_SAMPLE)
+    const topByCount = [...setups].sort((a, b) => b.count - a.count)[0]
+    const sides = sideStats(trades)
+    const hours = hourStats(trades)
+    const streaks = streakStats(trades)
+    const drawdown = drawdownDuration(buildEquity(trades, account.startingEquity))
+    const excursions = excursionStats(trades)
+    const sideLeader = sides.every((side) => side.count >= MIN_SETUP_SAMPLE)
+      ? [...sides].sort((a, b) => b.avgR - a.avgR)[0]
+      : undefined
+    const sideSpread = Math.abs(sides[0]!.avgR - sides[1]!.avgR)
     return {
       stats,
       setups,
@@ -38,8 +63,16 @@ export function Mirror() {
       mistakes,
       bestDay,
       worstDay,
-      bestSetup: setups[0],
-      worstSetup: setups.length > 1 ? setups[setups.length - 1] : undefined,
+      bestSetup: qualified[0],
+      worstSetup: qualified.length > 1 ? qualified[qualified.length - 1] : undefined,
+      topByCount,
+      sides,
+      hours,
+      streaks,
+      drawdown,
+      excursions,
+      sideLeader,
+      sideSpread,
     }
   }, [trades, account.startingEquity, config.disciplineItems])
 
@@ -75,13 +108,22 @@ export function Mirror() {
       <section className="mt-5 grid grid-cols-3 divide-x divide-line rounded-xl border border-line bg-white">
         <div className="px-4 py-3.5">
           <div className="text-[10.5px] text-faint">最稳定的形态</div>
-          <div className="mt-1 truncate text-[14px] font-medium text-ink">
-            {model.bestSetup ? model.bestSetup.key : '—'}
+          <div className="mt-1 flex items-baseline gap-1.5">
+            <span className="min-w-0 truncate text-[14px] font-medium text-ink">
+              {model.bestSetup ? model.bestSetup.key : '样本不足'}
+            </span>
+            {model.bestSetup ? (
+              <span className={`shrink-0 text-[9px] ${confidenceOf(model.bestSetup.count).tone}`}>
+                {confidenceOf(model.bestSetup.count).label}
+              </span>
+            ) : null}
           </div>
-          <div className="mt-0.5 text-[10.5px] text-muted">
+          <div className="mt-0.5 truncate text-[10.5px] text-muted">
             {model.bestSetup
               ? `${model.bestSetup.count} 笔 · 期望 ${fmtR(model.bestSetup.avgR)}`
-              : '尚无样本'}
+              : model.topByCount
+                ? `最多 ${model.topByCount.key} ${model.topByCount.count} 笔 · 门槛 ${MIN_SETUP_SAMPLE} 笔`
+                : '尚无样本'}
           </div>
         </div>
         <div className="px-4 py-3.5">
@@ -146,6 +188,197 @@ export function Mirror() {
           ))}
         </div>
       </section>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <section className="rounded-xl border border-line bg-white px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[12.5px] font-semibold text-ink">多空表现</h2>
+            <span className="text-[9.5px] text-faint">已平仓 · 按方向</span>
+          </div>
+          <div className="mt-2.5 space-y-1">
+            {model.sides.map((side) => (
+              <div
+                key={side.key}
+                className="grid grid-cols-[38px_minmax(0,1fr)_48px_76px] items-center gap-2 rounded-md px-1 py-1.5 text-[11px] hover:bg-list"
+              >
+                <span className={`font-medium ${side.key === 'L' ? 'text-gain' : 'text-loss'}`}>
+                  {side.label}
+                </span>
+                <span className="num text-[10px] text-faint">
+                  {side.count ? `${side.count} 笔 · 胜率 ${fmtPct(side.winRate, 0)}` : '无样本'}
+                </span>
+                <span
+                  className={`num text-right ${
+                    side.count ? (side.avgR >= 0 ? 'text-gain' : 'text-loss') : 'text-faint'
+                  }`}
+                >
+                  {side.count ? fmtR(side.avgR) : '—'}
+                </span>
+                <span className="text-right">
+                  {side.count ? (
+                    <Pnl value={side.netPnl} className="text-[10.5px]" />
+                  ) : (
+                    <span className="text-[10px] text-faint">—</span>
+                  )}
+                </span>
+              </div>
+            ))}
+          </div>
+          <p className="mt-2 border-t border-line pt-2 text-[10px] leading-relaxed text-faint">
+            {!model.sideLeader
+              ? `两个方向都达到 ${MIN_SETUP_SAMPLE} 笔后，方向差异才值得参考。`
+              : model.sideSpread < 0.02
+                ? `两个方向平均 R 基本持平（相差 ${model.sideSpread.toFixed(2)}R）。`
+                : `目前${model.sideLeader.label}更强（${fmtR(model.sideLeader.avgR)}），两个方向都有 ≥ ${MIN_SETUP_SAMPLE} 笔样本。`}
+          </p>
+        </section>
+
+        <section className="rounded-xl border border-line bg-white px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[12.5px] font-semibold text-ink">小时段</h2>
+            <span className="text-[9.5px] text-faint">按入场小时</span>
+          </div>
+          {model.hours.length ? (
+            <div className="mt-2.5 max-h-[220px] space-y-0.5 overflow-y-auto pr-0.5">
+              {model.hours.map((hour) => (
+                <div
+                  key={hour.key}
+                  className="grid grid-cols-[88px_minmax(0,1fr)_48px] items-center gap-2 rounded-md px-1 py-1 text-[11px] hover:bg-list"
+                >
+                  <span className="num text-[10.5px] text-muted">{hour.key}</span>
+                  <span className="num text-[10px] text-faint">
+                    {hour.count} 笔 · 胜率 {fmtPct(hour.winRate, 0)}
+                  </span>
+                  <span
+                    className={`num text-right ${hour.avgR >= 0 ? 'text-gain' : 'text-loss'}`}
+                  >
+                    {fmtR(hour.avgR)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          ) : (
+            <p className="mt-2.5 text-[10.5px] leading-relaxed text-faint">
+              入场时间不完整，暂时无法按小时汇总。
+            </p>
+          )}
+        </section>
+      </div>
+
+      <div className="mt-3 grid grid-cols-2 gap-3">
+        <section className="rounded-xl border border-line bg-white px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[12.5px] font-semibold text-ink">连续盈亏与回撤</h2>
+            <span className="text-[9.5px] text-faint">按平仓顺序</span>
+          </div>
+          <div className="mt-2.5 grid grid-cols-3 gap-2">
+            <div className="rounded-lg bg-list px-2.5 py-2">
+              <div className="text-[9.5px] text-faint">最长连胜</div>
+              <div className="num mt-0.5 text-[15px] font-semibold text-gain">
+                {model.streaks.maxWins}
+                <span className="ml-0.5 text-[9.5px] font-normal text-faint">笔</span>
+              </div>
+            </div>
+            <div className="rounded-lg bg-list px-2.5 py-2">
+              <div className="text-[9.5px] text-faint">最长连亏</div>
+              <div className="num mt-0.5 text-[15px] font-semibold text-loss">
+                {model.streaks.maxLosses}
+                <span className="ml-0.5 text-[9.5px] font-normal text-faint">笔</span>
+              </div>
+            </div>
+            <div className="rounded-lg bg-list px-2.5 py-2">
+              <div className="text-[9.5px] text-faint">当前</div>
+              <div className="mt-0.5 text-[12px] font-semibold">
+                {model.streaks.currentWins ? (
+                  <span className="text-gain">{model.streaks.currentWins} 连胜</span>
+                ) : model.streaks.currentLosses ? (
+                  <span className="text-loss">{model.streaks.currentLosses} 连亏</span>
+                ) : (
+                  <span className="text-faint">—</span>
+                )}
+              </div>
+            </div>
+          </div>
+          <div className="mt-2 rounded-lg bg-list px-3 py-2 text-[10px] leading-relaxed">
+            <div className="flex items-center justify-between">
+              <span className="text-faint">最长回撤</span>
+              <span className="num text-ink-2">
+                {model.drawdown.maxDays ? `${model.drawdown.maxDays} 天` : '未形成回撤'}
+              </span>
+            </div>
+            {model.drawdown.maxDays ? (
+              <div className="mt-0.5 text-faint">
+                {model.drawdown.maxPeak} 高点 → {model.drawdown.maxRecovery ?? model.drawdown.maxTrough}
+                {model.drawdown.maxRecovery ? ' 恢复' : ' 仍未恢复'}
+              </div>
+            ) : null}
+            {model.drawdown.currentDays &&
+            (model.drawdown.maxRecovery || model.drawdown.currentDays !== model.drawdown.maxDays) ? (
+              <div className="mt-0.5 text-warn">
+                当前自 {model.drawdown.currentPeak} 起回撤 {model.drawdown.currentDays} 天未创新高
+              </div>
+            ) : null}
+          </div>
+        </section>
+
+        <section className="rounded-xl border border-line bg-white px-4 py-3.5">
+          <div className="flex items-center justify-between">
+            <h2 className="text-[12.5px] font-semibold text-ink">偏移与捕获</h2>
+            <span className="text-[9.5px] text-faint">
+              {model.excursions.count ? `${model.excursions.count} 笔已填写` : '未填写'}
+            </span>
+          </div>
+          {model.excursions.count ? (
+            <>
+              <div className="mt-2.5 grid grid-cols-3 gap-2">
+                <div className="rounded-lg bg-list px-2.5 py-2">
+                  <div className="text-[9.5px] text-faint">平均 MAE</div>
+                  <div className="num mt-0.5 text-[15px] font-semibold text-loss">
+                    {model.excursions.avgMaeR ? `−${model.excursions.avgMaeR.toFixed(2)}R` : '—'}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-list px-2.5 py-2">
+                  <div className="text-[9.5px] text-faint">平均 MFE</div>
+                  <div className="num mt-0.5 text-[15px] font-semibold text-gain">
+                    {model.excursions.avgMfeR ? `+${model.excursions.avgMfeR.toFixed(2)}R` : '—'}
+                  </div>
+                </div>
+                <div className="rounded-lg bg-list px-2.5 py-2">
+                  <div className="text-[9.5px] text-faint">MFE 捕获率</div>
+                  <div
+                    className={`num mt-0.5 text-[15px] font-semibold ${
+                      model.excursions.capture >= 60
+                        ? 'text-gain'
+                        : model.excursions.capture >= 40
+                          ? 'text-accent'
+                          : 'text-warn'
+                    }`}
+                  >
+                    {model.excursions.avgMfeR ? `${model.excursions.capture.toFixed(0)}%` : '—'}
+                  </div>
+                </div>
+              </div>
+              <div className="mt-2 space-y-1 text-[10px]">
+                <div className="flex items-center justify-between">
+                  <span className="text-faint">盈利单平均 MAE</span>
+                  <span className="num text-loss">−{model.excursions.winMaeR.toFixed(2)}R</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-faint">亏损单平均 MAE</span>
+                  <span className="num text-loss">−{model.excursions.lossMaeR.toFixed(2)}R</span>
+                </div>
+              </div>
+              <p className="mt-2 border-t border-line pt-2 text-[9.5px] leading-relaxed text-faint">
+                捕获率 = 已实现 R ÷ MFE R。超过 100% 通常说明 MFE 记录偏低。
+              </p>
+            </>
+          ) : (
+            <p className="mt-2.5 text-[10.5px] leading-relaxed text-faint">
+              在交易表单填写“最大不利偏移 / 最大有利偏移”后，这里会比较浮亏承受与利润回吐。
+            </p>
+          )}
+        </section>
+      </div>
 
       <section className="mt-3 rounded-xl border border-line bg-white px-5 py-4">
         <div className="flex flex-wrap items-start justify-between gap-3">
@@ -220,7 +453,9 @@ export function Mirror() {
         <section className="rounded-xl border border-line bg-white">
           <div className="px-4 pb-2 pt-3.5">
             <h2 className="text-[12.5px] font-semibold text-ink">形态表现</h2>
-            <p className="mt-0.5 text-[10.5px] text-faint">按累计 R 排序，样本少时仅供参考</p>
+            <p className="mt-0.5 text-[10.5px] text-faint">
+              按平均 R 排序；少于 {MIN_SETUP_SAMPLE} 笔不参与最佳形态评选
+            </p>
           </div>
           <div className="px-2 pb-2">
             {model.setups.map((setup) => {
@@ -242,7 +477,11 @@ export function Mirror() {
                         style={{ width: `${width}%` }}
                       />
                     </div>
-                    <span className="num w-[92px] shrink-0 text-right text-[10px] text-faint">
+                    <span
+                      className={`num w-[92px] shrink-0 text-right text-[10px] ${
+                        setup.count < MIN_SETUP_SAMPLE ? 'text-warn' : 'text-faint'
+                      }`}
+                    >
                       {setup.count} 笔 · {fmtPct(setup.winRate, 0)}
                     </span>
                   </div>
@@ -348,7 +587,7 @@ export function Mirror() {
                 <span>
                   <b className="font-medium text-ink">{model.bestSetup.key}</b>{' '}
                   是当前期望最高的形态，平均 {fmtR(model.bestSetup.avgR)}，共{' '}
-                  {model.bestSetup.count} 笔。
+                  {model.bestSetup.count} 笔（{confidenceOf(model.bestSetup.count).label}）。
                 </span>
               </li>
             ) : null}
@@ -377,6 +616,34 @@ export function Mirror() {
                   带错误标签的交易平均 {fmtR(model.mistakes.taggedAvgR)}，未标记交易平均{' '}
                   {fmtR(model.mistakes.cleanAvgR)}，差距{' '}
                   {fmtR(model.mistakes.cleanAvgR - model.mistakes.taggedAvgR)}。
+                </span>
+              </li>
+            ) : null}
+            {model.sideLeader && model.sideSpread >= 0.02 ? (
+              <li className="flex gap-2">
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-accent" />
+                <span>
+                  {model.sideLeader.label}平均 {fmtR(model.sideLeader.avgR)}，胜率{' '}
+                  {fmtPct(model.sideLeader.winRate, 0)}；两个方向都有足够样本。
+                </span>
+              </li>
+            ) : null}
+            {model.excursions.count >= MIN_SETUP_SAMPLE && model.excursions.avgMfeR ? (
+              <li className="flex gap-2">
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
+                <span>
+                  平均 MFE +{model.excursions.avgMfeR.toFixed(2)}R，实际捕获{' '}
+                  {model.excursions.capture.toFixed(0)}%
+                  {model.excursions.capture < 50 ? '，利润回吐偏多。' : '。'}
+                </span>
+              </li>
+            ) : null}
+            {model.drawdown.maxDays >= 5 ? (
+              <li className="flex gap-2">
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
+                <span>
+                  最长回撤持续 {model.drawdown.maxDays} 天，
+                  {model.drawdown.maxRecovery ? '已经恢复。' : '仍未恢复。'}
                 </span>
               </li>
             ) : null}

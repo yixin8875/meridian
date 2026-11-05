@@ -23,7 +23,7 @@ import {
 } from '../data/contracts'
 
 const LOCAL_KEY = 'meridian.trader.v2'
-export const DATA_VERSION = 7
+export const DATA_VERSION = 8
 
 function isoToday(): string {
   const now = new Date()
@@ -393,6 +393,14 @@ export function normalizeData(raw: unknown): AppData {
               : accounts[0]!.id,
           discipline: normalizeDiscipline(trade.discipline),
           mistakes: normalizeNames(trade.mistakes),
+          maeR:
+            typeof trade.maeR === 'number' && Number.isFinite(trade.maeR) && trade.maeR > 0
+              ? Math.round(trade.maeR * 100) / 100
+              : 0,
+          mfeR:
+            typeof trade.mfeR === 'number' && Number.isFinite(trade.mfeR) && trade.mfeR > 0
+              ? Math.round(trade.mfeR * 100) / 100
+              : 0,
           charts: normalizeCharts(trade.charts),
         }))
     : []

@@ -76,6 +76,10 @@ export interface Trade {
   discipline: Discipline
   /** 交易级错误标签，例如追单、移动止损；空数组表示没有记录到明确错误。 */
   mistakes: string[]
+  /** 最大不利偏移（R 倍数，≥0）；0 表示未记录。 */
+  maeR: number
+  /** 最大有利偏移（R 倍数，≥0）；0 表示未记录。 */
+  mfeR: number
   note: string
   grade: Grade
   charts: ChartRef[]

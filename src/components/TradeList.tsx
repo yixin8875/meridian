@@ -1,5 +1,12 @@
-import { useMemo } from 'react'
-import { CalendarDays, Image as ImageIcon, Plus, SearchX, X } from 'lucide-react'
+import { useMemo, useState } from 'react'
+import {
+  CalendarDays,
+  Image as ImageIcon,
+  Plus,
+  SearchX,
+  SlidersHorizontal,
+  X,
+} from 'lucide-react'
 import type { ListFilter, Trade } from '../types'
 import { useApp } from '../store'
 import { fmtDateCN, weekdayCN } from '../lib/format'
@@ -27,11 +34,38 @@ export function TradeList({
   onClearDate: () => void
 }) {
   const { config } = useApp()
+  const [filtersOpen, setFiltersOpen] = useState(false)
+  const [symbolFilter, setSymbolFilter] = useState('all')
+  const [setupFilter, setSetupFilter] = useState('all')
+  const [sessionFilter, setSessionFilter] = useState('all')
+  const [fromDate, setFromDate] = useState('')
+  const [toDate, setToDate] = useState('')
+  const activeFilters = [
+    symbolFilter !== 'all',
+    setupFilter !== 'all',
+    sessionFilter !== 'all',
+    Boolean(fromDate),
+    Boolean(toDate),
+  ].filter(Boolean).length
+
+  const clearFilters = () => {
+    setSymbolFilter('all')
+    setSetupFilter('all')
+    setSessionFilter('all')
+    setFromDate('')
+    setToDate('')
+  }
+
   const groups = useMemo(() => {
     const q = query.trim().toLowerCase()
     const filtered = trades.filter((trade) => {
       if (date && trade.date !== date) return false
       if (filter !== 'all' && trade.status !== filter) return false
+      if (symbolFilter !== 'all' && trade.symbol !== symbolFilter) return false
+      if (setupFilter !== 'all' && trade.setup !== setupFilter) return false
+      if (sessionFilter !== 'all' && trade.session !== sessionFilter) return false
+      if (fromDate && trade.date < fromDate) return false
+      if (toDate && trade.date > toDate) return false
       if (!q) return true
       const haystack = [
         trade.symbol,
@@ -56,7 +90,18 @@ export function TradeList({
       map.set(trade.date, list)
     }
     return { total: filtered.length, entries: [...map.entries()] }
-  }, [trades, query, filter, config.contracts, date])
+  }, [
+    trades,
+    query,
+    filter,
+    config.contracts,
+    date,
+    symbolFilter,
+    setupFilter,
+    sessionFilter,
+    fromDate,
+    toDate,
+  ])
 
   return (
     <>
@@ -68,9 +113,25 @@ export function TradeList({
             {date ? ` · ${fmtDateCN(date)}` : query ? ` · 搜索“${query}”` : ''}
           </p>
         </div>
-        <button className="icon-btn" onClick={onNew} aria-label="记录交易">
-          <Plus size={16} />
-        </button>
+        <div className="flex items-center gap-0.5">
+          <button
+            className={`icon-btn relative ${filtersOpen || activeFilters ? 'text-accent' : ''}`}
+            onClick={() => setFiltersOpen((open) => !open)}
+            aria-label="筛选交易"
+            aria-expanded={filtersOpen}
+            title="按合约、形态、时段与日期筛选"
+          >
+            <SlidersHorizontal size={15} />
+            {activeFilters ? (
+              <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-[8px] font-semibold text-white">
+                {activeFilters}
+              </span>
+            ) : null}
+          </button>
+          <button className="icon-btn" onClick={onNew} aria-label="记录交易">
+            <Plus size={16} />
+          </button>
+        </div>
       </div>
 
       <div className="flex shrink-0 items-center gap-1.5 border-b border-line px-3 py-2">
@@ -100,6 +161,93 @@ export function TradeList({
         ) : null}
         <span className="ml-auto text-[10px] text-faint">{groups.total} 条</span>
       </div>
+
+      {filtersOpen ? (
+        <div className="shrink-0 space-y-2 border-b border-line bg-white px-3 py-2.5">
+          <div className="grid grid-cols-3 gap-2">
+            <label>
+              <span className="mb-0.5 block text-[9px] text-faint">合约</span>
+              <select
+                className="input h-7 px-1.5 py-0 text-[10.5px]"
+                value={symbolFilter}
+                onChange={(event) => setSymbolFilter(event.target.value)}
+              >
+                <option value="all">全部</option>
+                {config.contracts.map((contract) => (
+                  <option key={contract.symbol} value={contract.symbol}>
+                    {contract.symbol}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="mb-0.5 block text-[9px] text-faint">形态</span>
+              <select
+                className="input h-7 px-1.5 py-0 text-[10.5px]"
+                value={setupFilter}
+                onChange={(event) => setSetupFilter(event.target.value)}
+              >
+                <option value="all">全部</option>
+                {config.setups.map((setup) => (
+                  <option key={setup} value={setup}>
+                    {setup}
+                  </option>
+                ))}
+              </select>
+            </label>
+            <label>
+              <span className="mb-0.5 block text-[9px] text-faint">时段</span>
+              <select
+                className="input h-7 px-1.5 py-0 text-[10.5px]"
+                value={sessionFilter}
+                onChange={(event) => setSessionFilter(event.target.value)}
+              >
+                <option value="all">全部</option>
+                {config.sessions.map((session) => (
+                  <option key={session} value={session}>
+                    {session}
+                  </option>
+                ))}
+              </select>
+            </label>
+          </div>
+          <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-1.5">
+            <label>
+              <span className="mb-0.5 block text-[9px] text-faint">开始日期</span>
+              <input
+                type="date"
+                className="input h-7 px-1.5 py-0 text-[10px]"
+                max={toDate || undefined}
+                value={fromDate}
+                onChange={(event) => setFromDate(event.target.value)}
+              />
+            </label>
+            <span className="pb-1.5 text-[9px] text-faint">至</span>
+            <label>
+              <span className="mb-0.5 block text-[9px] text-faint">结束日期</span>
+              <input
+                type="date"
+                className="input h-7 px-1.5 py-0 text-[10px]"
+                min={fromDate || undefined}
+                value={toDate}
+                onChange={(event) => setToDate(event.target.value)}
+              />
+            </label>
+          </div>
+          <div className="flex items-center justify-between">
+            <span className="text-[9.5px] text-faint">
+              {activeFilters ? `已启用 ${activeFilters} 项筛选` : '选择条件后自动生效'}
+            </span>
+            <button
+              className="text-[9.5px] text-accent hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline"
+              onClick={clearFilters}
+              disabled={!activeFilters}
+            >
+              清除筛选
+            </button>
+          </div>
+        </div>
+      ) : null}
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         {groups.entries.map(([date, items]) => (
@@ -156,18 +304,32 @@ export function TradeList({
         {!groups.entries.length ? (
           <EmptyState
             icon={<SearchX size={18} />}
-            title={date ? '这一天没有交易' : query ? '没有匹配的交易' : '还没有交易记录'}
+            title={
+              date
+                ? '这一天没有交易'
+                : query
+                  ? '没有匹配的交易'
+                  : activeFilters
+                    ? '没有匹配筛选的交易'
+                    : '还没有交易记录'
+            }
             description={
               date
                 ? '清除日期筛选可以查看全部交易。'
                 : query
                   ? '换一个合约、形态或日期试试。'
-                  : '记录第一笔交易后，这里会按日期整理你的决策。'
+                  : activeFilters
+                    ? '调整或清除筛选条件后再试。'
+                    : '记录第一笔交易后，这里会按日期整理你的决策。'
             }
             action={
               date ? (
                 <button className="btn btn-secondary" onClick={onClearDate}>
                   查看全部交易
+                </button>
+              ) : activeFilters ? (
+                <button className="btn btn-secondary" onClick={clearFilters}>
+                  清除筛选
                 </button>
               ) : !query ? (
                 <button className="btn btn-primary" onClick={onNew}>

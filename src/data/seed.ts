@@ -145,6 +145,10 @@ function buildTrade(params: { index: number; date: string; isWin: boolean }): Tr
     sizePlanned: rng() < base[2]!,
     journaled: rng() < base[3]!,
   }
+  const maeR = Number((0.2 + Math.abs(Math.sin(index * 1.7)) * (isWin ? 0.65 : 0.9)).toFixed(2))
+  const mfeR = Number(
+    (Math.max(r, 0) + 0.2 + Math.abs(Math.cos(index * 2.3)) * (isWin ? 1.2 : 0.6)).toFixed(2),
+  )
   const mistakes: string[] = []
   if (!discipline.stopHonored) mistakes.push('移动止损')
   if (!discipline.sizePlanned) mistakes.push('过度交易')
@@ -173,6 +177,8 @@ function buildTrade(params: { index: number; date: string; isWin: boolean }): Tr
     status: 'closed',
     discipline,
     mistakes,
+    maeR,
+    mfeR,
     note: pick(isWin ? WIN_NOTES : LOSS_NOTES),
     grade: gradeOf(r),
     charts: [],
@@ -202,6 +208,8 @@ function curatedTrades(): Trade[] {
     status: 'closed',
     discipline: { stopPlanned: true, stopHonored: true, sizePlanned: true, journaled: true },
     mistakes: [],
+    maeR: 0,
+    mfeR: 0,
     note: '',
     grade: 'B',
     charts: [],
@@ -222,6 +230,8 @@ function curatedTrades(): Trade[] {
       exit: 2342.8,
       pnl: 575,
       rMultiple: 0.88,
+      maeR: 0.45,
+      mfeR: 1.35,
       fees: 5,
       setup: '趋势回撤',
       note: '小盘趋势向下，反抽前高失败后进场，按计划在整数位前止盈。',
@@ -242,6 +252,8 @@ function curatedTrades(): Trade[] {
       exit: 5815.39,
       pnl: 3384,
       rMultiple: 2.86,
+      maeR: 0.32,
+      mfeR: 3.4,
       fees: 5,
       setup: '消息延续',
       note: '消息公布后的第二波回踩，没有追第一根。持有到前高上方，执行 A 级。',
@@ -262,6 +274,8 @@ function curatedTrades(): Trade[] {
       exit: 5830.86,
       pnl: -1708,
       rMultiple: -0.69,
+      maeR: 0.92,
+      mfeR: 0.41,
       fees: 7.5,
       setup: '失败拍卖',
       note: '拍卖失败后做多，回抽确认才进场，仍被扫损。执行没有问题，亏损在预算内。',
@@ -288,6 +302,8 @@ function openPositions(): Trade[] {
       current: 24274.5,
       pnl: 2492,
       rMultiple: 2.76,
+      maeR: 0.38,
+      mfeR: 2.98,
       fees: 20,
       setup: '趋势回撤',
       session: '尾盘',
@@ -314,6 +330,8 @@ function openPositions(): Trade[] {
       current: 61.58,
       pnl: -160,
       rMultiple: -0.36,
+      maeR: 0.52,
+      mfeR: 0.28,
       fees: 2.5,
       setup: '区间反转',
       session: '午盘',
