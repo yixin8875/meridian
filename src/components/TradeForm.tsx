@@ -170,6 +170,7 @@ export function TradeForm({
             addedAt: todayISO(),
             width: prepared.width,
             height: prepared.height,
+            annotations: [],
           },
         ])
       }
@@ -761,6 +762,9 @@ export function TradeForm({
           index={lightbox}
           onClose={() => setLightbox(null)}
           onNavigate={setLightbox}
+          onChartChange={(next) =>
+            setCharts((prev) => prev.map((chart) => (chart.id === next.id ? next : chart)))
+          }
         />
       </div>
     </Modal>

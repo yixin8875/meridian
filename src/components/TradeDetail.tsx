@@ -16,10 +16,12 @@ export function TradeDetail({
   trade,
   onEdit,
   onDelete,
+  onUpdate,
 }: {
   trade: Trade | null
   onEdit: (trade: Trade) => void
   onDelete: (id: string) => void
+  onUpdate: (trade: Trade) => void
 }) {
   const { config } = useApp()
   const [confirm, setConfirm] = useState(false)
@@ -197,7 +199,15 @@ export function TradeDetail({
                 {trade.charts.length} 张 · 点击放大，← → 切换
               </span>
             </div>
-            <ChartGallery items={trade.charts} />
+            <ChartGallery
+              items={trade.charts}
+              onChartChange={(next) =>
+                onUpdate({
+                  ...trade,
+                  charts: trade.charts.map((chart) => (chart.id === next.id ? next : chart)),
+                })
+              }
+            />
           </section>
         </>
       ) : null}

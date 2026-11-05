@@ -1,7 +1,9 @@
 import type {
   Account,
+  AnnotationPoint,
   AppData,
   CashFlow,
+  ChartAnnotation,
   ChartRef,
   ChecklistItem,
   ContractConfig,
@@ -23,7 +25,7 @@ import {
 } from '../data/contracts'
 
 const LOCAL_KEY = 'meridian.trader.v2'
-export const DATA_VERSION = 8
+export const DATA_VERSION = 9
 
 function isoToday(): string {
   const now = new Date()
@@ -322,6 +324,56 @@ function normalizeCashFlows(raw: unknown, accountIds: Set<string>): CashFlow[] {
   return out
 }
 
+function normalizePoint(raw: unknown): AnnotationPoint | null {
+  if (!raw || typeof raw !== 'object') return null
+  const point = raw as Partial<AnnotationPoint>
+  if (typeof point.x !== 'number' || typeof point.y !== 'number') return null
+  if (!Number.isFinite(point.x) || !Number.isFinite(point.y)) return null
+  return {
+    x: Math.min(1, Math.max(0, point.x)),
+    y: Math.min(1, Math.max(0, point.y)),
+  }
+}
+
+function normalizeAnnotations(raw: unknown): ChartAnnotation[] {
+  if (!Array.isArray(raw)) return []
+  return raw.flatMap((entry): ChartAnnotation[] => {
+    if (!entry || typeof entry !== 'object') return []
+    const obj = entry as Record<string, unknown>
+    if (typeof obj.id !== 'string' || !obj.id.trim()) return []
+    const color =
+      typeof obj.color === 'string' && /^#[0-9a-f]{6}$/i.test(obj.color) ? obj.color : '#ef4444'
+    const width =
+      typeof obj.width === 'number' && Number.isFinite(obj.width)
+        ? Math.min(12, Math.max(1, obj.width))
+        : 4
+    if (obj.type === 'pen') {
+      const points = Array.isArray(obj.points)
+        ? obj.points.map(normalizePoint).filter((point): point is AnnotationPoint => Boolean(point))
+        : []
+      if (points.length < 2) return []
+      return [{ id: obj.id, type: 'pen', color, width, points: points.slice(0, 3000) }]
+    }
+    if (obj.type === 'arrow' || obj.type === 'rect') {
+      const start = normalizePoint(obj.start)
+      const end = normalizePoint(obj.end)
+      if (!start || !end) return []
+      return [{ id: obj.id, type: obj.type, color, width, start, end }]
+    }
+    if (obj.type === 'text') {
+      const text = typeof obj.text === 'string' ? obj.text.trim().slice(0, 200) : ''
+      const point = normalizePoint({ x: obj.x, y: obj.y })
+      const size =
+        typeof obj.size === 'number' && Number.isFinite(obj.size)
+          ? Math.min(48, Math.max(10, obj.size))
+          : 16
+      if (!text || !point) return []
+      return [{ id: obj.id, type: 'text', color, text, x: point.x, y: point.y, size }]
+    }
+    return []
+  })
+}
+
 function normalizeCharts(raw: unknown): ChartRef[] {
   if (!Array.isArray(raw)) return []
   return raw.flatMap((entry) => {
@@ -335,6 +387,7 @@ function normalizeCharts(raw: unknown): ChartRef[] {
         addedAt: typeof obj.addedAt === 'string' && obj.addedAt ? obj.addedAt : isoToday(),
         width: typeof obj.width === 'number' && obj.width > 0 ? obj.width : 0,
         height: typeof obj.height === 'number' && obj.height > 0 ? obj.height : 0,
+        annotations: normalizeAnnotations(obj.annotations),
       },
     ]
   })

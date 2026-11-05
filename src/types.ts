@@ -44,6 +44,44 @@ export interface SetupChecklist {
   items: ChecklistItem[]
 }
 
+export type AnnotationTool = 'pen' | 'arrow' | 'rect' | 'text'
+
+/** 相对图片左上角的坐标，0–1，随图片显示尺寸缩放。 */
+export interface AnnotationPoint {
+  x: number
+  y: number
+}
+
+interface AnnotationBase {
+  id: string
+  color: string
+}
+
+export interface PenAnnotation extends AnnotationBase {
+  type: 'pen'
+  /** 线宽（显示像素）。 */
+  width: number
+  points: AnnotationPoint[]
+}
+
+export interface ShapeAnnotation extends AnnotationBase {
+  type: 'arrow' | 'rect'
+  width: number
+  start: AnnotationPoint
+  end: AnnotationPoint
+}
+
+export interface TextAnnotation extends AnnotationBase {
+  type: 'text'
+  text: string
+  x: number
+  y: number
+  /** 字号（显示像素）。 */
+  size: number
+}
+
+export type ChartAnnotation = PenAnnotation | ShapeAnnotation | TextAnnotation
+
 /** 一张 K 线截图。文件本体存在应用数据目录的 charts/ 下，这里只存引用。 */
 export interface ChartRef {
   id: string
@@ -51,6 +89,8 @@ export interface ChartRef {
   addedAt: string
   width: number
   height: number
+  /** 叠加在截图上的矢量标注，不修改原图。 */
+  annotations: ChartAnnotation[]
 }
 
 export interface Trade {

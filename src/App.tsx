@@ -272,7 +272,12 @@ function Workspace() {
           />
         ) : null}
         {page === 'trades' ? (
-          <TradeDetail trade={selectedTrade} onEdit={openEditTrade} onDelete={removeTrade} />
+          <TradeDetail
+            trade={selectedTrade}
+            onEdit={openEditTrade}
+            onDelete={removeTrade}
+            onUpdate={updateTrade}
+          />
         ) : null}
         {page === 'mirror' ? <Mirror /> : null}
         {page === 'notes' ? (
