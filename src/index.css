@@ -1,0 +1,189 @@
+@import "tailwindcss";
+
+@theme {
+  --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
+    "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
+  --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+
+  --color-canvas: #f5f4f1;
+  --color-sidebar: #f7f6f3;
+  --color-list: #fcfbf9;
+  --color-ink: #1d1d1f;
+  --color-ink-2: #45454a;
+  --color-muted: #6e6e73;
+  --color-faint: #98989e;
+  --color-line: #e7e5e0;
+  --color-line-2: #d8d6d0;
+  --color-hover: #efeeea;
+  --color-selected: #eae9e5;
+  --color-accent: #0b6cf0;
+  --color-accent-hover: #075dcc;
+  --color-accent-soft: #eaf2fe;
+  --color-gain: #12805c;
+  --color-gain-soft: #e9f6f0;
+  --color-loss: #c7443e;
+  --color-loss-soft: #fcefee;
+  --color-warn: #a9691a;
+  --color-warn-soft: #fbf3e6;
+}
+
+@layer base {
+  html,
+  body,
+  #root {
+    height: 100%;
+  }
+
+  body {
+    @apply bg-canvas font-sans text-ink antialiased;
+    font-size: 13px;
+    text-rendering: optimizeLegibility;
+  }
+
+  button {
+    cursor: pointer;
+  }
+
+  :focus-visible {
+    outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
+    outline-offset: 1px;
+  }
+
+  ::selection {
+    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+  }
+
+  * {
+    scrollbar-width: thin;
+    scrollbar-color: #d2cfc9 transparent;
+  }
+
+  ::-webkit-scrollbar {
+    width: 10px;
+    height: 10px;
+  }
+
+  ::-webkit-scrollbar-thumb {
+    background: #d2cfc9;
+    border: 3px solid transparent;
+    background-clip: padding-box;
+    border-radius: 8px;
+  }
+
+  ::-webkit-scrollbar-track {
+    background: transparent;
+  }
+}
+
+@layer components {
+  .btn {
+    @apply inline-flex h-8 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-[12.5px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn-primary {
+    @apply bg-accent text-white shadow-[0_1px_2px_rgba(16,24,40,0.14)] hover:bg-accent-hover;
+  }
+
+  .btn-secondary {
+    @apply border border-line bg-white text-ink hover:bg-hover;
+  }
+
+  .btn-ghost {
+    @apply text-muted hover:bg-hover hover:text-ink;
+  }
+
+  .btn-danger {
+    @apply bg-loss text-white hover:brightness-95;
+  }
+
+  .icon-btn {
+    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-ink;
+  }
+
+  .input {
+    @apply h-8 w-full rounded-md border border-line bg-white px-2.5 text-[12.5px] text-ink outline-none transition placeholder:text-faint focus:border-accent/60 focus:ring-2 focus:ring-accent/15;
+  }
+
+  .textarea {
+    @apply w-full resize-y rounded-md border border-line bg-white px-2.5 py-2 text-[12.5px] leading-relaxed text-ink outline-none transition placeholder:text-faint focus:border-accent/60 focus:ring-2 focus:ring-accent/15;
+  }
+
+  .field-label {
+    @apply mb-1.5 block text-[11px] font-medium text-muted;
+  }
+
+  .panel {
+    @apply rounded-xl border border-line bg-white;
+  }
+
+  .section-label {
+    @apply text-[10.5px] font-semibold uppercase tracking-[0.08em] text-faint;
+  }
+
+  .nav-row {
+    @apply flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-[12.5px] text-ink-2 transition-colors hover:bg-hover;
+  }
+
+  .nav-row-active {
+    @apply bg-selected font-medium text-ink;
+  }
+
+  .list-row {
+    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-hover;
+  }
+
+  .list-row-active {
+    @apply bg-selected;
+  }
+
+  .kbd {
+    @apply inline-flex h-[18px] min-w-[18px] items-center justify-center rounded border border-line bg-white px-1 font-mono text-[9px] text-faint;
+  }
+
+  .chip {
+    @apply inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border border-line bg-white px-2.5 text-[11px] text-muted transition-colors hover:border-line-2 hover:text-ink;
+  }
+
+  .chip-active {
+    @apply border-ink bg-ink text-white hover:border-ink hover:text-white;
+  }
+
+  .seg {
+    @apply inline-flex items-center rounded-md border border-line bg-canvas p-0.5;
+  }
+
+  .seg button {
+    @apply h-6 rounded px-2 text-[11px] text-muted transition-colors;
+  }
+
+  .seg button:hover {
+    @apply text-ink;
+  }
+
+  .seg button[data-active="true"] {
+    @apply bg-white text-ink shadow-[0_1px_2px_rgba(16,24,40,0.12)];
+  }
+
+  .divider {
+    @apply h-px w-full bg-line;
+  }
+
+  .num {
+    font-variant-numeric: tabular-nums;
+  }
+
+  .fade-in {
+    animation: fade-in 0.18s ease-out both;
+  }
+}
+
+@keyframes fade-in {
+  from {
+    opacity: 0;
+    transform: translateY(2px);
+  }
+  to {
+    opacity: 1;
+    transform: none;
+  }
+}

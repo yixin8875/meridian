@@ -1,0 +1,11 @@
+node_modules
+dist
+.vite
+src-tauri/target
+src-tauri/gen/schemas
+.env
+.env.*
+*.key
+*.pem
+*.local
+.DS_Store
