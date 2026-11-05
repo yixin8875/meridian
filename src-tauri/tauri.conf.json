@@ -1,7 +1,7 @@
 {
   "$schema": "../node_modules/@tauri-apps/cli/config.schema.json",
   "productName": "MERIDIAN",
-  "version": "0.3.2",
+  "version": "0.3.3",
   "identifier": "com.meridian.trader",
   "build": {
     "frontendDist": "../dist",
@@ -28,9 +28,18 @@
       "csp": null
     }
   },
+  "plugins": {
+    "updater": {
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEFDMTdCNjJBN0VDM0Y1NTMKUldSVDljTitLcllYckNqRWl3ckJUc0kwWDU4Wm0rOWw5YVU5MXZubFpzeE8xNEU3U2RIRGs4SEYK",
+      "endpoints": [
+        "https://github.com/yixin8875/meridian/releases/latest/download/latest.json"
+      ]
+    }
+  },
   "bundle": {
     "active": true,
     "targets": "all",
+    "createUpdaterArtifacts": true,
     "icon": [
       "icons/32x32.png",
       "icons/128x128.png",

@@ -39,13 +39,44 @@ npm run tauri:build
 
 ## 安装包（Windows x64）
 
-| 文件 | 体积 | 说明 |
-| --- | --- | --- |
-| `src-tauri/target/release/bundle/nsis/MERIDIAN_0.3.2_x64-setup.exe` | 1.9 MB | 推荐，NSIS 安装器，中文界面，支持当前用户安装 |
-| `src-tauri/target/release/bundle/msi/MERIDIAN_0.3.2_x64_zh-CN.msi` | 2.9 MB | WiX MSI，适合批量部署 / 组策略 |
+从 [GitHub Releases](https://github.com/yixin8875/meridian/releases) 下载最新版本：
 
+| 文件 | 说明 |
+| --- | --- |
+| `MERIDIAN_<version>_x64-setup.exe` | 推荐，NSIS 安装器，中文界面，支持当前用户安装 |
+| `MERIDIAN_<version>_x64_zh-CN.msi` | WiX MSI，适合批量部署 / 组策略 |
+
+- 推送带新版本号的 `main` 后，GitHub Actions 会自动构建并发布安装包与更新文件。
 - 安装包未做代码签名，首次运行会出现 SmartScreen「已保护你的电脑」提示，选择「更多信息 → 仍要运行」即可。
 - 安装后数据仍写入 `%APPDATA%\com.meridian.trader\meridian.json`；卸载不会删除该文件。
+
+## 版本发布与自动更新
+
+版本号以 `src-tauri/tauri.conf.json` 为准，发布前需要同步修改：
+
+- `package.json`（可用 `npm version <version> --no-git-tag-version` 同时更新 `package-lock.json`）
+- `src-tauri/tauri.conf.json`
+- `src-tauri/Cargo.toml`（`Cargo.lock` 会在构建时同步）
+- `src/views/Settings.tsx` 页脚显示
+
+提交并推送到 `main` 后，[`.github/workflows/release.yml`](.github/workflows/release.yml) 会：
+
+1. 读取版本号；若 `v<version>` Release 已存在则直接跳过；
+2. 在 `windows-latest` 上构建 NSIS 与 MSI；
+3. 上传安装包、更新包（`.nsis.zip` / `.msi.zip`）、签名文件与 `latest.json`。
+
+首次启用自动发布前，在仓库 `Settings → Secrets and variables → Actions` 添加：
+
+- `TAURI_SIGNING_PRIVATE_KEY`：更新签名私钥的**完整内容**。本机生成在 `%USERPROFILE%\.tauri\meridian.key`，不要提交到仓库。
+- `TAURI_SIGNING_PRIVATE_KEY_PASSWORD`：生成密钥时设置的密码；无密码可留空或不添加。
+
+应用启动 3 秒后请求 `https://github.com/yixin8875/meridian/releases/latest/download/latest.json`。发现新版本时右下角会提示，点击「下载并安装」后自动重启。更新检查只在生产构建中启用，`tauri:dev` 与浏览器预览不会联网检查。0.3.2 及更早版本尚未包含更新器，需要手动安装一次 0.3.3。
+
+本地带签名构建（生成更新包）：
+
+```bash
+TAURI_SIGNING_PRIVATE_KEY="$HOME/.tauri/meridian.key" npm run tauri:build
+```
 
 ## 首次启动
 
@@ -67,6 +98,7 @@ npm run tauri:build
 - **交易字典** —— 合约（代码、名称、每点价值）、时段与形态都可以在设置中自行增删改；改名会同步历史交易，仍被使用的条目不能删除。
 - **多账户** —— 侧栏账户菜单可随时切换或新建账户；每个账户有独立的起始权益、手续费、交易、笔记与统计，设置页支持改名、改参数与删除（连同其数据）。
 - **设置** —— 账户管理与切换；本机数据文件路径；CSV 导入 / 导出（作用于当前账户）；主动载入示例或清空当前账户。
+- **自动更新** —— 生产版启动后自动检查 GitHub Releases；发现新版本时在右下角提示，可在应用内下载、安装并重启。
 - **全局搜索** —— `⌘K` / `Ctrl K`，可搜索合约、形态、日期、备注与笔记。
 
 ## 数据存储
@@ -150,6 +182,7 @@ src/
     NoteDetail.tsx      笔记阅读 / 编辑
     Chart.tsx           手写 SVG 权益曲线
     PnlCalendar.tsx     月度盈亏日历与按日聚合
+    UpdateBanner.tsx    自动更新检查、下载与安装提示
     primitives.tsx      徽标、盈亏、指标、弹窗等基础组件
   views/
     Overview.tsx        总览
@@ -173,3 +206,4 @@ src/
 - 美元计价；不支持汇率换算。
 - 不连接券商、不拉取实时行情；“持仓中”的当前价由手动填写。
 - 无云同步与多设备合并；数据以本机文件为准，可通过 CSV 迁移。
+- 自动更新依赖 GitHub Releases；离线或尚未发布新版本时不会提示。

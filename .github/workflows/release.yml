@@ -1,0 +1,92 @@
+name: Release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: release
+  cancel-in-progress: false
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: windows-latest
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        shell: bash
+        run: |
+          echo "value=$(node -p "require('./src-tauri/tauri.conf.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Check existing release
+        id: release
+        shell: bash
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          if gh release view "v${{ steps.version.outputs.value }}" --repo "$GITHUB_REPOSITORY" >/dev/null 2>&1; then
+            echo "exists=true" >> "$GITHUB_OUTPUT"
+            echo "Release v${{ steps.version.outputs.value }} already exists; skipping build."
+          else
+            echo "exists=false" >> "$GITHUB_OUTPUT"
+          fi
+
+      - name: Check updater signing key
+        id: signing
+        if: steps.release.outputs.exists == 'false'
+        shell: bash
+        env:
+          TAURI_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+        run: |
+          if [ -z "$TAURI_KEY" ]; then
+            echo "::warning title=缺少更新签名密钥::在仓库 Settings → Secrets and variables → Actions 中添加 TAURI_SIGNING_PRIVATE_KEY 后重新运行。"
+            echo "ready=false" >> "$GITHUB_OUTPUT"
+          else
+            echo "ready=true" >> "$GITHUB_OUTPUT"
+          fi
+
+      - uses: actions/setup-node@v4
+        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        with:
+          node-version: 22
+          cache: npm
+
+      - uses: dtolnay/rust-toolchain@stable
+        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+
+      - uses: swatinem/rust-cache@v2
+        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        with:
+          workspaces: src-tauri -> target
+
+      - name: Install dependencies
+        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        run: npm ci
+
+      - name: Build and publish
+        if: steps.release.outputs.exists == 'false' && steps.signing.outputs.ready == 'true'
+        uses: tauri-apps/tauri-action@v0
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          TAURI_SIGNING_PRIVATE_KEY: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY }}
+          TAURI_SIGNING_PRIVATE_KEY_PASSWORD: ${{ secrets.TAURI_SIGNING_PRIVATE_KEY_PASSWORD }}
+        with:
+          tagName: v__VERSION__
+          releaseName: MERIDIAN v__VERSION__
+          releaseBody: |
+            Windows 安装包与自动更新文件。
+
+            - 安装包：NSIS / MSI
+            - 应用内更新：启动后通过 latest.json 自动检测
+            - 数据仍保存在本机 `%APPDATA%\com.meridian.trader`，升级不会覆盖
+          releaseDraft: false
+          prerelease: false
+          includeUpdaterJson: true
+          args: --bundles nsis,msi

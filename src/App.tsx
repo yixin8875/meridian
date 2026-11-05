@@ -11,6 +11,7 @@ import { NoteDetail } from './components/NoteDetail'
 import { Overview } from './views/Overview'
 import { Mirror } from './views/Mirror'
 import { Settings } from './views/Settings'
+import { UpdateBanner } from './components/UpdateBanner'
 import { closedTrades, sortTrades } from './lib/stats'
 
 const PAGES: Page[] = ['overview', 'trades', 'mirror', 'notes', 'settings']
@@ -284,6 +285,8 @@ function Workspace() {
         ) : null}
         {page === 'settings' ? <Settings /> : null}
       </AppShell>
+
+      <UpdateBanner />
 
       <TradeForm
         open={formOpen}
