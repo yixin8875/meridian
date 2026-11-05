@@ -280,6 +280,14 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
               <span className="text-muted">成交</span>
               <span className="text-ink">{active.point.trades} 笔</span>
             </div>
+            {active.point.flow !== 0 ? (
+              <div className="flex justify-between gap-6">
+                <span className="text-muted">资金变动</span>
+                <span className={active.point.flow > 0 ? 'text-gain' : 'text-loss'}>
+                  {fmtSignedMoney(active.point.flow, true)}
+                </span>
+              </div>
+            ) : null}
           </div>
         </div>
       ) : null}

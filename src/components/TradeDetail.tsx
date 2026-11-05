@@ -229,6 +229,31 @@ export function TradeDetail({
 
       <section>
         <div className="flex items-center justify-between">
+          <h2 className="text-[12px] font-semibold text-ink">错误标签</h2>
+          <span className="text-[10.5px] text-faint">
+            {trade.mistakes?.length ? `${trade.mistakes.length} 项` : '未标记过程错误'}
+          </span>
+        </div>
+        <div className="mt-3 flex flex-wrap gap-1.5">
+          {trade.mistakes?.length ? (
+            trade.mistakes.map((tag) => (
+              <span
+                key={tag}
+                className="inline-flex h-6 items-center rounded-full border border-loss/20 bg-loss-soft px-2.5 text-[10.5px] text-loss"
+              >
+                {tag}
+              </span>
+            ))
+          ) : (
+            <span className="text-[11px] text-faint">这笔交易没有记录明确的过程错误。</span>
+          )}
+        </div>
+      </section>
+
+      <div className="divider my-6" />
+
+      <section>
+        <div className="flex items-center justify-between">
           <h2 className="text-[12px] font-semibold text-ink">复盘备注</h2>
           <span className="text-[10.5px] text-faint">{trade.setup}</span>
         </div>

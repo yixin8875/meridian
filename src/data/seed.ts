@@ -1,4 +1,13 @@
-import type { AppData, Discipline, Grade, JournalNote, Side, Trade } from '../types'
+import type {
+  AppData,
+  CashFlow,
+  DailyReview,
+  Discipline,
+  Grade,
+  JournalNote,
+  Side,
+  Trade,
+} from '../types'
 import { parseISO, toISO } from '../lib/format'
 import { DATA_VERSION } from '../lib/storage'
 import { CONTRACTS, DEFAULT_CONFIG } from './contracts'
@@ -135,6 +144,12 @@ function buildTrade(params: { index: number; date: string; isWin: boolean }): Tr
     sizePlanned: rng() < base[2]!,
     journaled: rng() < base[3]!,
   }
+  const mistakes: string[] = []
+  if (!discipline.stopHonored) mistakes.push('移动止损')
+  if (!discipline.sizePlanned) mistakes.push('过度交易')
+  if (!isWin && rng() < 0.16) mistakes.push('提前入场')
+  if (rng() < 0.09) mistakes.push('追单')
+  if (rng() < 0.05) mistakes.push('计划外交易')
   return {
     id: `t${String(index + 1).padStart(4, '0')}`,
     accountId: DEMO_ACCOUNT_ID,
@@ -156,6 +171,7 @@ function buildTrade(params: { index: number; date: string; isWin: boolean }): Tr
     session: sessionOf(entryMinutes),
     status: 'closed',
     discipline,
+    mistakes,
     note: pick(isWin ? WIN_NOTES : LOSS_NOTES),
     grade: gradeOf(r),
     charts: [],
@@ -184,6 +200,7 @@ function curatedTrades(): Trade[] {
     session: '早盘',
     status: 'closed',
     discipline: { stopPlanned: true, stopHonored: true, sizePlanned: true, journaled: true },
+    mistakes: [],
     note: '',
     grade: 'B',
     charts: [],
@@ -275,6 +292,7 @@ function openPositions(): Trade[] {
       session: '尾盘',
       status: 'open',
       discipline: { stopPlanned: true, stopHonored: true, sizePlanned: true, journaled: true },
+      mistakes: [],
       note: '尾盘趋势回撤承接，留仓过夜，止损放在日内结构下方。',
       grade: 'A',
       charts: [],
@@ -300,9 +318,67 @@ function openPositions(): Trade[] {
       session: '午盘',
       status: 'open',
       discipline: { stopPlanned: true, stopHonored: true, sizePlanned: true, journaled: false },
+      mistakes: [],
       note: '区间上沿受阻做空，原油库存数据前减了一半风险，余仓观察。',
       grade: 'B',
       charts: [],
+    },
+  ]
+}
+
+function seedFlows(): CashFlow[] {
+  return [
+    {
+      id: 'cf_demo_1',
+      accountId: DEMO_ACCOUNT_ID,
+      date: '2026-03-02',
+      kind: 'deposit',
+      amount: 20000,
+      note: '追加保证金',
+    },
+    {
+      id: 'cf_demo_2',
+      accountId: DEMO_ACCOUNT_ID,
+      date: '2026-07-01',
+      kind: 'withdrawal',
+      amount: 12000,
+      note: '提取部分利润',
+    },
+    {
+      id: 'cf_demo_3',
+      accountId: DEMO_ACCOUNT_ID,
+      date: '2026-10-01',
+      kind: 'dividend',
+      amount: 500,
+      note: '账户利息',
+    },
+  ]
+}
+
+function seedReviews(): DailyReview[] {
+  return [
+    {
+      id: 'dr_20261104',
+      accountId: DEMO_ACCOUNT_ID,
+      date: '2026-11-04',
+      marketContext:
+        '开盘冲高后回落，午盘在 VWAP 下方震荡；原油库存数据前波动收窄，尾盘趋势单承接。',
+      plan: '只做失败拍卖与趋势回撤；单笔风险不超过账户 0.8%，数据前不开新仓。',
+      executionScore: 80,
+      violations: ['移动止损'],
+      improvement: '止损只在结构失效时移动，不因为浮亏扩大而临时放宽。',
+      updatedAt: '2026-11-04T16:10:00Z',
+    },
+    {
+      id: 'dr_20261103',
+      accountId: DEMO_ACCOUNT_ID,
+      date: '2026-11-03',
+      marketContext: '消息公布后指数单边向上，回踩没有跌破前一根 K 线低点。',
+      plan: '等第二波回踩，不追第一根；目标放在前高上方。',
+      executionScore: 90,
+      violations: [],
+      improvement: '保持同样的等待节奏，把“错过”当作正常成本。',
+      updatedAt: '2026-11-03T16:05:00Z',
     },
   ]
 }
@@ -394,6 +470,11 @@ export function createSeedData(): AppData {
         name: '私人账户 · 示例数据',
         startingEquity: 370000,
         feePerContract: 2.5,
+        risk: {
+          riskPerTradePct: 0.8,
+          dailyLossLimit: 1500,
+          maxConsecutiveLosses: 3,
+        },
         createdAt: '2026-01-08',
       },
     ],
@@ -405,5 +486,7 @@ export function createSeedData(): AppData {
     },
     trades: [...generated, ...openPositions()],
     notes: seedNotes(),
+    dailyReviews: seedReviews(),
+    cashFlows: seedFlows(),
   }
 }

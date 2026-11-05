@@ -8,7 +8,18 @@ import {
   useState,
   type ReactNode,
 } from 'react'
-import type { Account, AppData, ContractConfig, JournalNote, Trade, TradingConfig } from './types'
+import type {
+  Account,
+  AppData,
+  CashFlow,
+  ContractConfig,
+  DailyReview,
+  JournalNote,
+  RiskConfig,
+  Trade,
+  TradingConfig,
+} from './types'
+import { DEFAULT_RISK } from './data/contracts'
 import { createSeedData } from './data/seed'
 import { EMPTY_DATA, hasTauri, loadState, saveState } from './lib/storage'
 import { deleteChart } from './lib/charts'
@@ -18,6 +29,7 @@ export interface NewAccountInput {
   name: string
   startingEquity: number
   feePerContract: number
+  risk: RiskConfig
 }
 
 interface StoreValue {
@@ -32,10 +44,12 @@ interface StoreValue {
   accounts: Account[]
   trades: Trade[]
   notes: JournalNote[]
+  reviews: DailyReview[]
+  cashFlows: CashFlow[]
   setActiveAccount: (id: string) => void
   addAccount: (input: NewAccountInput) => Account
   updateAccount: (
-    patch: Partial<Pick<Account, 'name' | 'startingEquity' | 'feePerContract'>>,
+    patch: Partial<Pick<Account, 'name' | 'startingEquity' | 'feePerContract' | 'risk'>>,
   ) => void
   deleteAccount: (id: string) => void
   /** 全应用共享的合约 / 时段 / 形态字典。 */
@@ -55,6 +69,10 @@ interface StoreValue {
   addNote: (note: JournalNote) => void
   updateNote: (note: JournalNote) => void
   deleteNote: (id: string) => void
+  saveDailyReview: (review: DailyReview) => void
+  deleteDailyReview: (date: string) => void
+  saveCashFlow: (flow: CashFlow) => void
+  deleteCashFlow: (id: string) => void
   importTrades: (trades: Trade[]) => void
   replaceData: (data: AppData) => void
   loadDemo: () => void
@@ -174,6 +192,22 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [data.notes, account.id],
   )
 
+  const reviews = useMemo(
+    () =>
+      data.dailyReviews
+        .filter((review) => review.accountId === account.id)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [data.dailyReviews, account.id],
+  )
+
+  const cashFlows = useMemo(
+    () =>
+      data.cashFlows
+        .filter((flow) => flow.accountId === account.id)
+        .sort((a, b) => b.date.localeCompare(a.date)),
+    [data.cashFlows, account.id],
+  )
+
   const setActiveAccount = useCallback(
     (id: string) => {
       mutate((prev) =>
@@ -190,6 +224,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
         name: input.name.trim() || '新账户',
         startingEquity: input.startingEquity > 0 ? input.startingEquity : 100000,
         feePerContract: input.feePerContract >= 0 ? input.feePerContract : 2.5,
+        risk: { ...DEFAULT_RISK, ...input.risk },
         createdAt: new Date().toISOString().slice(0, 10),
       }
       mutate((prev) => ({
@@ -229,6 +264,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
             prev.activeAccountId === id ? accounts[0]!.id : prev.activeAccountId,
           trades: prev.trades.filter((trade) => trade.accountId !== id),
           notes: prev.notes.filter((note) => note.accountId !== id),
+          dailyReviews: prev.dailyReviews.filter((review) => review.accountId !== id),
+          cashFlows: prev.cashFlows.filter((flow) => flow.accountId !== id),
         }
       })
     },
@@ -465,6 +502,63 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [mutate],
   )
 
+  const saveDailyReview = useCallback(
+    (review: DailyReview) => {
+      const next = { ...review, updatedAt: new Date().toISOString() }
+      mutate((prev) => {
+        const index = prev.dailyReviews.findIndex(
+          (entry) => entry.accountId === review.accountId && entry.date === review.date,
+        )
+        if (index < 0) return { ...prev, dailyReviews: [next, ...prev.dailyReviews] }
+        const existing = prev.dailyReviews[index]!
+        return {
+          ...prev,
+          dailyReviews: prev.dailyReviews.map((entry, i) =>
+            i === index ? { ...next, id: existing.id } : entry,
+          ),
+        }
+      })
+    },
+    [mutate],
+  )
+
+  const deleteDailyReview = useCallback(
+    (date: string) => {
+      const accountId = latest.current.activeAccountId
+      mutate((prev) => ({
+        ...prev,
+        dailyReviews: prev.dailyReviews.filter(
+          (review) => !(review.accountId === accountId && review.date === date),
+        ),
+      }))
+    },
+    [mutate],
+  )
+
+  const saveCashFlow = useCallback(
+    (flow: CashFlow) => {
+      mutate((prev) => {
+        const index = prev.cashFlows.findIndex((entry) => entry.id === flow.id)
+        if (index < 0) return { ...prev, cashFlows: [flow, ...prev.cashFlows] }
+        return {
+          ...prev,
+          cashFlows: prev.cashFlows.map((entry, i) => (i === index ? flow : entry)),
+        }
+      })
+    },
+    [mutate],
+  )
+
+  const deleteCashFlow = useCallback(
+    (id: string) => {
+      mutate((prev) => ({
+        ...prev,
+        cashFlows: prev.cashFlows.filter((flow) => flow.id !== id),
+      }))
+    },
+    [mutate],
+  )
+
   const importTrades = useCallback(
     (incoming: Trade[]) => {
       const accountId = latest.current.activeAccountId
@@ -504,6 +598,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       ...prev,
       trades: prev.trades.filter((trade) => trade.accountId !== prev.activeAccountId),
       notes: prev.notes.filter((note) => note.accountId !== prev.activeAccountId),
+      dailyReviews: prev.dailyReviews.filter(
+        (review) => review.accountId !== prev.activeAccountId,
+      ),
+      cashFlows: prev.cashFlows.filter((flow) => flow.accountId !== prev.activeAccountId),
     }))
   }, [mutate])
 
@@ -593,6 +691,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteSetup,
       trades,
       notes,
+      reviews,
+      cashFlows,
       setActiveAccount,
       addAccount,
       updateAccount,
@@ -603,6 +703,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addNote,
       updateNote,
       deleteNote,
+      saveDailyReview,
+      deleteDailyReview,
+      saveCashFlow,
+      deleteCashFlow,
       importTrades,
       replaceData,
       loadDemo,
@@ -632,6 +736,8 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       deleteSetup,
       trades,
       notes,
+      reviews,
+      cashFlows,
       setActiveAccount,
       addAccount,
       updateAccount,
@@ -642,6 +748,10 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       addNote,
       updateNote,
       deleteNote,
+      saveDailyReview,
+      deleteDailyReview,
+      saveCashFlow,
+      deleteCashFlow,
       importTrades,
       replaceData,
       loadDemo,

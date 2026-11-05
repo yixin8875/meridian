@@ -1,12 +1,14 @@
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
-import type { Account } from '../types'
+import type { Account, RiskConfig } from '../types'
+import { DEFAULT_RISK } from '../data/contracts'
 import { Modal } from './primitives'
 
 export interface AccountValues {
   name: string
   startingEquity: number
   feePerContract: number
+  risk: RiskConfig
 }
 
 export function AccountDialog({
@@ -24,19 +26,29 @@ export function AccountDialog({
   const [name, setName] = useState('')
   const [equity, setEquity] = useState('100000')
   const [fee, setFee] = useState('2.5')
+  const [riskPct, setRiskPct] = useState(String(DEFAULT_RISK.riskPerTradePct))
+  const [dailyLimit, setDailyLimit] = useState(String(DEFAULT_RISK.dailyLossLimit))
+  const [streakLimit, setStreakLimit] = useState(String(DEFAULT_RISK.maxConsecutiveLosses))
   const [error, setError] = useState<string | null>(null)
 
   useEffect(() => {
     if (!open) return
+    const risk = account?.risk ?? DEFAULT_RISK
     setName(account?.name ?? '')
     setEquity(String(account?.startingEquity ?? 100000))
     setFee(String(account?.feePerContract ?? 2.5))
+    setRiskPct(String(risk.riskPerTradePct))
+    setDailyLimit(String(risk.dailyLossLimit))
+    setStreakLimit(String(risk.maxConsecutiveLosses))
     setError(null)
   }, [open, account])
 
   const submit = () => {
     const parsedEquity = Number(equity)
     const parsedFee = Number(fee)
+    const parsedRisk = Number(riskPct)
+    const parsedLimit = Number(dailyLimit)
+    const parsedStreak = Number(streakLimit)
     if (!name.trim()) {
       setError('请填写账户名称。')
       return
@@ -49,10 +61,27 @@ export function AccountDialog({
       setError('每手手续费不能为负数。')
       return
     }
+    if (!Number.isFinite(parsedRisk) || parsedRisk <= 0 || parsedRisk > 100) {
+      setError('单笔风险需要大于 0 且不超过 100%。')
+      return
+    }
+    if (!Number.isFinite(parsedLimit) || parsedLimit < 0) {
+      setError('每日亏损上限不能为负数；填 0 表示不限制。')
+      return
+    }
+    if (!Number.isFinite(parsedStreak) || parsedStreak < 0) {
+      setError('连续亏损上限不能为负数；填 0 表示不限制。')
+      return
+    }
     onSubmit({
       name: name.trim(),
       startingEquity: Math.round(parsedEquity * 100) / 100,
       feePerContract: Math.round(parsedFee * 100) / 100,
+      risk: {
+        riskPerTradePct: Math.round(parsedRisk * 100) / 100,
+        dailyLossLimit: Math.round(parsedLimit * 100) / 100,
+        maxConsecutiveLosses: Math.round(parsedStreak),
+      },
     })
   }
 
@@ -132,8 +161,56 @@ export function AccountDialog({
           </label>
         </div>
 
+        <div className="divider my-1" />
+
+        <div>
+          <div className="field-label">风险参数</div>
+          <div className="mt-1 grid grid-cols-3 gap-2.5">
+            <label>
+              <span className="text-[10px] text-faint">单笔风险 %</span>
+              <input
+                name="riskPerTradePct"
+                type="number"
+                min={0.1}
+                max={100}
+                step={0.1}
+                className="input num mt-1"
+                value={riskPct}
+                onChange={(event) => setRiskPct(event.target.value)}
+              />
+            </label>
+            <label>
+              <span className="text-[10px] text-faint">日亏损上限 $</span>
+              <input
+                name="dailyLossLimit"
+                type="number"
+                min={0}
+                step={100}
+                className="input num mt-1"
+                value={dailyLimit}
+                onChange={(event) => setDailyLimit(event.target.value)}
+              />
+            </label>
+            <label>
+              <span className="text-[10px] text-faint">连续亏损上限</span>
+              <input
+                name="maxConsecutiveLosses"
+                type="number"
+                min={0}
+                step={1}
+                className="input num mt-1"
+                value={streakLimit}
+                onChange={(event) => setStreakLimit(event.target.value)}
+              />
+            </label>
+          </div>
+          <p className="mt-1.5 text-[9.5px] text-faint">
+            日亏损上限与连续亏损上限填 0 表示不限制；单笔风险用于交易表单的建议手数。
+          </p>
+        </div>
+
         <p className="rounded-lg bg-list px-3 py-2 text-[10.5px] leading-relaxed text-faint">
-          账户之间完全隔离：交易台账、复盘笔记、权益曲线与镜像分析只显示当前账户。
+          账户之间完全隔离：交易台账、复盘笔记、资金流水、权益曲线与镜像分析只显示当前账户。
         </p>
       </div>
     </Modal>

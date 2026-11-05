@@ -49,6 +49,8 @@ const ALIASES: Record<string, string> = {
   fees: 'fees',
   备注: 'note',
   note: 'note',
+  错误标签: 'mistakes',
+  mistakes: 'mistakes',
   纪律: 'discipline',
   discipline: 'discipline',
 }
@@ -207,6 +209,14 @@ export function importTradesCsv(
         : 0
     const entryTime = normalizeTime(get(row, 'entryTime')) || '09:30'
     const note = get(row, 'note')
+    const mistakes = [
+      ...new Set(
+        get(row, 'mistakes')
+          .split(/[|;；、,，]/)
+          .map((tag) => tag.trim())
+          .filter(Boolean),
+      ),
+    ]
 
     trades.push({
       id: uid('tr'),
@@ -234,6 +244,7 @@ export function importTradesCsv(
         sizePlanned: true,
         journaled: Boolean(note),
       },
+      mistakes,
       note,
       grade: gradeOf(rMultiple),
       charts: [],
@@ -260,6 +271,7 @@ export function tradesToCsv(trades: Trade[]): string {
     'R',
     '盈亏(USD)',
     '手续费',
+    '错误标签',
     '备注',
   ]
   const body = trades.map((t) => [
@@ -278,6 +290,7 @@ export function tradesToCsv(trades: Trade[]): string {
     t.rMultiple.toFixed(2),
     t.pnl.toFixed(2),
     t.fees.toFixed(2),
+    (t.mistakes ?? []).join('|'),
     t.note,
   ])
   const csv = [header, ...body]

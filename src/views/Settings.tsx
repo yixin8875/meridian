@@ -13,8 +13,9 @@ import {
   Wallet,
   X,
 } from 'lucide-react'
-import type { Account, ContractConfig } from '../types'
+import type { Account, CashFlow, ContractConfig } from '../types'
 import { useApp } from '../store'
+import { CASH_FLOW_KINDS } from '../data/contracts'
 import { downloadCsv, importTradesCsv } from '../lib/csv'
 import {
   backupSupported,
@@ -24,9 +25,10 @@ import {
   restoreBackup,
   type BackupStatus,
 } from '../lib/backup'
-import { buildEquity } from '../lib/stats'
-import { fmtMoney, todayISO } from '../lib/format'
+import { buildEquity, cashFlowSummary } from '../lib/stats'
+import { fmtMoney, fmtSignedMoney, todayISO } from '../lib/format'
 import { AccountDialog, type AccountValues } from '../components/AccountDialog'
+import { CashFlowDialog } from '../components/CashFlowForm'
 import { Modal } from '../components/primitives'
 
 type Notice = { tone: 'ok' | 'error'; text: string } | null
@@ -39,6 +41,10 @@ export function Settings() {
     config,
     trades,
     notes,
+    reviews,
+    cashFlows,
+    saveCashFlow,
+    deleteCashFlow,
     saving,
     unsaved,
     storagePath,
@@ -70,6 +76,9 @@ export function Settings() {
   const [creating, setCreating] = useState(false)
   const [editing, setEditing] = useState<Account | null>(null)
   const [removing, setRemoving] = useState<string | null>(null)
+  const [flowOpen, setFlowOpen] = useState(false)
+  const [editingFlow, setEditingFlow] = useState<CashFlow | null>(null)
+  const [removingFlow, setRemovingFlow] = useState<string | null>(null)
   const [contractDraft, setContractDraft] = useState<{
     original: string | null
     symbol: string
@@ -232,6 +241,7 @@ export function Settings() {
   }
 
   const openCount = trades.filter((trade) => trade.status === 'open').length
+  const flowSummary = cashFlowSummary(cashFlows)
 
   const startContract = (contract?: ContractConfig) => {
     setDictError(null)
@@ -306,6 +316,7 @@ export function Settings() {
     const points = buildEquity(
       data.trades.filter((trade) => trade.accountId === entry.id),
       entry.startingEquity,
+      data.cashFlows.filter((flow) => flow.accountId === entry.id),
     )
     return points[points.length - 1]?.equity ?? entry.startingEquity
   }
@@ -348,7 +359,7 @@ export function Settings() {
           <div>
             <h2 className="text-[12.5px] font-semibold text-ink">账户</h2>
             <p className="mt-0.5 text-[10.5px] text-faint">
-              每个账户有独立的起始权益、手续费、交易台账与复盘笔记。
+              每个账户有独立的起始权益、手续费、交易台账、每日复盘与笔记。
             </p>
           </div>
           <button
@@ -365,6 +376,9 @@ export function Settings() {
             const active = entry.id === account.id
             const count = data.trades.filter((trade) => trade.accountId === entry.id).length
             const noteCount = data.notes.filter((note) => note.accountId === entry.id).length
+            const reviewCount = data.dailyReviews.filter(
+              (review) => review.accountId === entry.id,
+            ).length
             return (
               <div key={entry.id} className="flex items-center gap-3 px-5 py-3">
                 <button
@@ -393,7 +407,8 @@ export function Settings() {
                   <div className="num mt-0.5 truncate text-[10.5px] text-faint">
                     权益 ${fmtMoney(equityOf(entry), false)} · 起始 $
                     {fmtMoney(entry.startingEquity, false)} · 手续费 $
-                    {fmtMoney(entry.feePerContract)}/手 · {count} 笔 · {noteCount} 篇
+                    {fmtMoney(entry.feePerContract)}/手 · {count} 笔 · {reviewCount} 篇复盘 ·{' '}
+                    {noteCount} 篇笔记
                   </div>
                 </div>
 
@@ -406,7 +421,7 @@ export function Settings() {
                         setRemoving(null)
                         setNotice({
                           tone: 'ok',
-                          text: `已删除「${entry.name}」及其 ${count} 笔交易、${noteCount} 篇笔记。`,
+                          text: `已删除「${entry.name}」及其 ${count} 笔交易、${reviewCount} 篇复盘、${noteCount} 篇笔记。`,
                         })
                       }}
                     >
@@ -448,7 +463,144 @@ export function Settings() {
           })}
         </div>
         <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] text-faint">
-          共 {accounts.length} 个账户 · 删除账户会连同其交易、笔记与 K 线图一起删除，无法恢复。
+          共 {accounts.length} 个账户 · 删除账户会连同其交易、每日复盘、资金流水、笔记与 K 线图一起删除，无法恢复。
+        </div>
+      </section>
+
+      <section className="mt-3 rounded-xl border border-line bg-white">
+        <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
+          <div>
+            <h2 className="text-[12.5px] font-semibold text-ink">资金流水</h2>
+            <p className="mt-0.5 text-[10.5px] text-faint">
+              出入金与分红单独记录；权益曲线包含它们，收益率与回撤只衡量交易表现。
+            </p>
+          </div>
+          <button
+            className="btn btn-secondary h-8 shrink-0 px-2.5 text-[11px]"
+            onClick={() => {
+              setEditingFlow(null)
+              setFlowOpen(true)
+            }}
+          >
+            <Plus size={13} />
+            记录资金变动
+          </button>
+        </div>
+        <div className="divider" />
+        <div className="grid grid-cols-4 divide-x divide-line border-b border-line">
+          <div className="px-4 py-2.5">
+            <div className="text-[9.5px] text-faint">净流入</div>
+            <div
+              className={`num mt-0.5 text-[12.5px] font-semibold ${
+                flowSummary.net > 0 ? 'text-gain' : flowSummary.net < 0 ? 'text-loss' : 'text-ink'
+              }`}
+            >
+              {fmtSignedMoney(flowSummary.net, true)}
+            </div>
+          </div>
+          <div className="px-4 py-2.5">
+            <div className="text-[9.5px] text-faint">入金</div>
+            <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
+              ${fmtMoney(flowSummary.deposits, false)}
+            </div>
+          </div>
+          <div className="px-4 py-2.5">
+            <div className="text-[9.5px] text-faint">出金</div>
+            <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
+              ${fmtMoney(flowSummary.withdrawals, false)}
+            </div>
+          </div>
+          <div className="px-4 py-2.5">
+            <div className="text-[9.5px] text-faint">分红 / 利息</div>
+            <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
+              ${fmtMoney(flowSummary.dividends, false)}
+            </div>
+          </div>
+        </div>
+
+        {cashFlows.length ? (
+          <div className="divide-y divide-line">
+            {cashFlows.map((flow) => {
+              const kind = CASH_FLOW_KINDS.find((item) => item.key === flow.kind)
+              const sign = kind?.sign ?? 1
+              return (
+                <div key={flow.id} className="flex items-center gap-3 px-5 py-2.5">
+                  <span className="num w-[74px] shrink-0 text-[10.5px] text-faint">
+                    {flow.date}
+                  </span>
+                  <span
+                    className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[9.5px] ${
+                      sign > 0 ? 'bg-gain-soft text-gain' : 'bg-warn-soft text-warn'
+                    }`}
+                  >
+                    {kind?.short ?? flow.kind}
+                  </span>
+                  <span className="min-w-0 flex-1 truncate text-[11px] text-muted">
+                    {flow.note || '—'}
+                  </span>
+                  <span
+                    className={`num shrink-0 text-[11.5px] font-medium ${
+                      sign > 0 ? 'text-gain' : 'text-loss'
+                    }`}
+                  >
+                    {fmtSignedMoney(flow.amount * sign, true)}
+                  </span>
+                  {removingFlow === flow.id ? (
+                    <div className="flex shrink-0 items-center gap-1">
+                      <button
+                        className="btn btn-danger h-6 px-2 text-[10px]"
+                        onClick={() => {
+                          deleteCashFlow(flow.id)
+                          setRemovingFlow(null)
+                          setNotice({ tone: 'ok', text: '资金流水已删除，权益已重新计算。' })
+                        }}
+                      >
+                        确认删除
+                      </button>
+                      <button
+                        className="btn btn-secondary h-6 px-2 text-[10px]"
+                        onClick={() => setRemovingFlow(null)}
+                      >
+                        取消
+                      </button>
+                    </div>
+                  ) : (
+                    <div className="flex shrink-0 items-center gap-0.5">
+                      <button
+                        className="icon-btn h-6 w-6"
+                        title="编辑资金流水"
+                        aria-label="编辑资金流水"
+                        onClick={() => {
+                          setEditingFlow(flow)
+                          setFlowOpen(true)
+                        }}
+                      >
+                        <Pencil size={11} />
+                      </button>
+                      <button
+                        className="icon-btn h-6 w-6 hover:text-loss"
+                        title="删除资金流水"
+                        aria-label="删除资金流水"
+                        onClick={() => setRemovingFlow(flow.id)}
+                      >
+                        <Trash2 size={11} />
+                      </button>
+                    </div>
+                  )}
+                </div>
+              )
+            })}
+          </div>
+        ) : (
+          <div className="px-5 py-6 text-center">
+            <p className="text-[11px] text-muted">还没有资金流水</p>
+            <p className="mt-1 text-[10px] text-faint">
+              记录入金、出金或分红后，账户权益会按实际资金变化。
+            </p>
+          </div>
+        )}
+        <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] text-faint">
+          当前账户累计净流入 {fmtSignedMoney(flowSummary.net, true)} · 流水只影响「{account.name}」
         </div>
       </section>
 
@@ -645,7 +797,8 @@ export function Settings() {
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-list px-3 py-2 text-[10.5px] text-muted">
             <Wallet size={13} className="shrink-0 text-accent" />
             当前账户「{account.name}」：{trades.length} 笔交易（{openCount} 笔持仓中）·
-            {notes.length} 篇笔记 · 起始权益 ${fmtMoney(account.startingEquity, false)}
+            {reviews.length} 篇每日复盘 · {notes.length} 篇笔记 · 起始权益 $
+            {fmtMoney(account.startingEquity, false)}
           </div>
         </div>
       </section>
@@ -811,7 +964,9 @@ export function Settings() {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[12px] font-medium text-ink">清空当前账户的交易与笔记</div>
+              <div className="text-[12px] font-medium text-ink">
+                清空当前账户的交易、复盘、资金流水与笔记
+              </div>
               <div className="mt-0.5 text-[10.5px] text-muted">
                 只影响「{account.name}」，其他账户与账户设置保持不变。
               </div>
@@ -823,7 +978,10 @@ export function Settings() {
                   onClick={() => {
                     clearAll()
                     setClearConfirm(false)
-                    setNotice({ tone: 'ok', text: `已清空「${account.name}」的交易与笔记。` })
+                    setNotice({
+                      tone: 'ok',
+                      text: `已清空「${account.name}」的交易、每日复盘、资金流水与笔记。`,
+                    })
                   }}
                 >
                   确认清空
@@ -839,7 +997,7 @@ export function Settings() {
               <button
                 className="btn btn-secondary text-loss"
                 onClick={() => setClearConfirm(true)}
-                disabled={!trades.length && !notes.length}
+                disabled={!trades.length && !notes.length && !reviews.length && !cashFlows.length}
               >
                 <Trash2 size={13} />
                 清空数据
@@ -1028,6 +1186,28 @@ export function Settings() {
         account={editing}
         onClose={() => setEditing(null)}
         onSubmit={saveAccount}
+      />
+      <CashFlowDialog
+        open={flowOpen}
+        flow={editingFlow}
+        accountId={account.id}
+        onClose={() => {
+          setFlowOpen(false)
+          setEditingFlow(null)
+        }}
+        onSubmit={(flow) => {
+          saveCashFlow(flow)
+          setFlowOpen(false)
+          setEditingFlow(null)
+          const label = CASH_FLOW_KINDS.find((item) => item.key === flow.kind)?.label ?? '资金变动'
+          setNotice({
+            tone: 'ok',
+            text: `已保存 ${flow.date} ${label} ${fmtSignedMoney(
+              flow.amount * (CASH_FLOW_KINDS.find((item) => item.key === flow.kind)?.sign ?? 1),
+              true,
+            )}，权益已重新计算。`,
+          })
+        }}
       />
     </div>
   )

@@ -1,16 +1,19 @@
 import type {
   Account,
   AppData,
+  CashFlow,
   ChartRef,
   ContractConfig,
+  DailyReview,
   JournalNote,
+  RiskConfig,
   Trade,
   TradingConfig,
 } from '../types'
-import { DEFAULT_CONFIG } from '../data/contracts'
+import { CASH_FLOW_KINDS, DEFAULT_CONFIG, DEFAULT_RISK } from '../data/contracts'
 
 const LOCAL_KEY = 'meridian.trader.v2'
-export const DATA_VERSION = 4
+export const DATA_VERSION = 6
 
 function isoToday(): string {
   const now = new Date()
@@ -23,6 +26,7 @@ export const DEFAULT_ACCOUNT: Account = {
   name: '私人账户',
   startingEquity: 100000,
   feePerContract: 2.5,
+  risk: { ...DEFAULT_RISK },
   createdAt: isoToday(),
 }
 
@@ -39,6 +43,8 @@ export const EMPTY_DATA: AppData = {
   config: EMPTY_CONFIG,
   trades: [],
   notes: [],
+  dailyReviews: [],
+  cashFlows: [],
 }
 
 export function hasTauri(): boolean {
@@ -60,8 +66,33 @@ function normalizeAccount(raw: unknown): Account | null {
       typeof obj.feePerContract === 'number' && obj.feePerContract >= 0
         ? obj.feePerContract
         : DEFAULT_ACCOUNT.feePerContract,
+    risk: normalizeRisk(obj.risk),
     createdAt:
       typeof obj.createdAt === 'string' && obj.createdAt ? obj.createdAt : isoToday(),
+  }
+}
+
+function normalizeRisk(raw: unknown): RiskConfig {
+  const obj = (raw ?? {}) as Partial<RiskConfig>
+  return {
+    riskPerTradePct:
+      typeof obj.riskPerTradePct === 'number' &&
+      Number.isFinite(obj.riskPerTradePct) &&
+      obj.riskPerTradePct > 0
+        ? Math.min(100, obj.riskPerTradePct)
+        : DEFAULT_RISK.riskPerTradePct,
+    dailyLossLimit:
+      typeof obj.dailyLossLimit === 'number' &&
+      Number.isFinite(obj.dailyLossLimit) &&
+      obj.dailyLossLimit >= 0
+        ? obj.dailyLossLimit
+        : DEFAULT_RISK.dailyLossLimit,
+    maxConsecutiveLosses:
+      typeof obj.maxConsecutiveLosses === 'number' &&
+      Number.isFinite(obj.maxConsecutiveLosses) &&
+      obj.maxConsecutiveLosses >= 0
+        ? Math.round(obj.maxConsecutiveLosses)
+        : DEFAULT_RISK.maxConsecutiveLosses,
   }
 }
 
@@ -109,6 +140,82 @@ function normalizeConfig(raw: unknown): TradingConfig {
     sessions: sessions.length ? sessions : [...DEFAULT_CONFIG.sessions],
     setups: setups.length ? setups : [...DEFAULT_CONFIG.setups],
   }
+}
+
+function normalizeReviews(raw: unknown, accountIds: Set<string>): DailyReview[] {
+  if (!Array.isArray(raw)) return []
+  const seen = new Set<string>()
+  const out: DailyReview[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const obj = entry as Partial<DailyReview>
+    if (typeof obj.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(obj.date)) continue
+    const accountId =
+      typeof obj.accountId === 'string' && accountIds.has(obj.accountId)
+        ? obj.accountId
+        : [...accountIds][0]
+    if (!accountId) continue
+    const key = `${accountId}|${obj.date}`
+    if (seen.has(key)) continue
+    seen.add(key)
+    const score =
+      typeof obj.executionScore === 'number' && Number.isFinite(obj.executionScore)
+        ? Math.min(100, Math.max(0, Math.round(obj.executionScore)))
+        : 0
+    out.push({
+      id:
+        typeof obj.id === 'string' && obj.id.trim()
+          ? obj.id
+          : `dr_${accountId}_${obj.date}`,
+      accountId,
+      date: obj.date,
+      marketContext: typeof obj.marketContext === 'string' ? obj.marketContext : '',
+      plan: typeof obj.plan === 'string' ? obj.plan : '',
+      executionScore: score,
+      violations: normalizeNames(obj.violations),
+      improvement: typeof obj.improvement === 'string' ? obj.improvement : '',
+      updatedAt:
+        typeof obj.updatedAt === 'string' && obj.updatedAt ? obj.updatedAt : new Date().toISOString(),
+    })
+  }
+  return out
+}
+
+function normalizeCashFlows(raw: unknown, accountIds: Set<string>): CashFlow[] {
+  if (!Array.isArray(raw)) return []
+  const kinds = new Set(CASH_FLOW_KINDS.map((item) => item.key))
+  const seen = new Set<string>()
+  const out: CashFlow[] = []
+  for (const entry of raw) {
+    if (!entry || typeof entry !== 'object') continue
+    const obj = entry as Partial<CashFlow>
+    if (typeof obj.date !== 'string' || !/^\d{4}-\d{2}-\d{2}$/.test(obj.date)) continue
+    if (typeof obj.amount !== 'number' || !Number.isFinite(obj.amount) || obj.amount <= 0) continue
+    const accountId =
+      typeof obj.accountId === 'string' && accountIds.has(obj.accountId)
+        ? obj.accountId
+        : [...accountIds][0]
+    if (!accountId) continue
+    const kind =
+      typeof obj.kind === 'string' && kinds.has(obj.kind as CashFlow['kind'])
+        ? (obj.kind as CashFlow['kind'])
+        : 'deposit'
+    const id =
+      typeof obj.id === 'string' && obj.id.trim()
+        ? obj.id
+        : `cf_${accountId}_${obj.date}_${out.length}`
+    if (seen.has(id)) continue
+    seen.add(id)
+    out.push({
+      id,
+      accountId,
+      date: obj.date,
+      kind,
+      amount: Math.round(obj.amount * 100) / 100,
+      note: typeof obj.note === 'string' ? obj.note : '',
+    })
+  }
+  return out
 }
 
 function normalizeCharts(raw: unknown): ChartRef[] {
@@ -159,6 +266,7 @@ export function normalizeData(raw: unknown): AppData {
           typeof legacy.feePerContract === 'number' && legacy.feePerContract >= 0
             ? legacy.feePerContract
             : DEFAULT_ACCOUNT.feePerContract,
+        risk: { ...DEFAULT_RISK },
         createdAt: isoToday(),
       },
     ]
@@ -179,6 +287,7 @@ export function normalizeData(raw: unknown): AppData {
             typeof trade.accountId === 'string' && ids.has(trade.accountId)
               ? trade.accountId
               : accounts[0]!.id,
+          mistakes: normalizeNames(trade.mistakes),
           charts: normalizeCharts(trade.charts),
         }))
     : []
@@ -197,6 +306,8 @@ export function normalizeData(raw: unknown): AppData {
     : []
 
   const config = normalizeConfig(obj.config)
+  const dailyReviews = normalizeReviews(obj.dailyReviews, ids)
+  const cashFlows = normalizeCashFlows(obj.cashFlows, ids)
   // 历史 CSV 或旧数据里可能有字典之外的合约，补进去，避免详情与表单无法识别。
   const known = new Set(config.contracts.map((contract) => contract.symbol))
   for (const trade of trades) {
@@ -213,6 +324,8 @@ export function normalizeData(raw: unknown): AppData {
     config,
     trades,
     notes,
+    dailyReviews,
+    cashFlows,
   }
 }
 

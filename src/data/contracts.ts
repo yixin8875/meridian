@@ -1,4 +1,12 @@
-import type { ContractConfig, Discipline, Mood, NoteKind, TradingConfig } from '../types'
+import type {
+  CashFlowKind,
+  ContractConfig,
+  Discipline,
+  Mood,
+  NoteKind,
+  RiskConfig,
+  TradingConfig,
+} from '../types'
 
 export interface Contract {
   symbol: string
@@ -40,6 +48,34 @@ export const SESSIONS = ['早盘', '午盘', '尾盘'] as const
 export const NOTE_KINDS: NoteKind[] = ['盘前', '盘中', '盘后', '周总结']
 
 export const MOODS: Mood[] = ['平静', '专注', '焦躁', '疲惫']
+
+/** 新账户的默认风险口径：单笔 1%，不设硬性亏损上限。 */
+export const DEFAULT_RISK: RiskConfig = {
+  riskPerTradePct: 1,
+  dailyLossLimit: 0,
+  maxConsecutiveLosses: 0,
+}
+
+export const CASH_FLOW_KINDS: {
+  key: CashFlowKind
+  label: string
+  short: string
+  sign: 1 | -1
+}[] = [
+  { key: 'deposit', label: '入金', short: '入金', sign: 1 },
+  { key: 'withdrawal', label: '出金', short: '出金', sign: -1 },
+  { key: 'dividend', label: '分红 / 利息', short: '分红', sign: 1 },
+]
+
+/** 交易级错误标签：用于复盘时区分“结果不好”和“过程做错”。 */
+export const MISTAKE_TAGS = [
+  '追单',
+  '提前入场',
+  '移动止损',
+  '过度交易',
+  '报复交易',
+  '计划外交易',
+] as const
 
 export const DISCIPLINE_ITEMS: { key: keyof Discipline; label: string; short: string }[] = [
   { key: 'stopPlanned', label: '进场前已定义止损', short: '止损事先定义' },

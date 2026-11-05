@@ -60,10 +60,12 @@ function tint(pnl: number, strength: number): string {
 
 export function PnlCalendar({
   trades,
-  onOpenDate,
+  reviewDates,
+  onOpenReview,
 }: {
   trades: Trade[]
-  onOpenDate: (date: string) => void
+  reviewDates: ReadonlySet<string>
+  onOpenReview: (date: string) => void
 }) {
   const [month, setMonth] = useState(() => initialMonth(trades))
   const today = todayISO()
@@ -133,10 +135,10 @@ export function PnlCalendar({
           </h2>
           <p className="mt-0.5 text-[10.5px] text-faint">
             {empty
-              ? '本月暂无交易'
+              ? '本月暂无交易 · 仍可点击日期写每日复盘'
               : `${model.closedCount} 笔已平仓${
                   model.openCount ? ` · ${model.openCount} 笔持仓` : ''
-                } · 点击日期查看当日交易`}
+                } · 点击日期写每日复盘`}
           </p>
         </div>
 
@@ -191,35 +193,42 @@ export function PnlCalendar({
             const strength = hasClosed ? Math.abs(pnl) / model.maxAbs : 0
             const isToday = date === today
             const isFuture = date > today
+            const hasReview = reviewDates.has(date)
 
             return (
               <button
                 key={date}
                 type="button"
-                disabled={!day}
-                onClick={() => onOpenDate(date)}
+                disabled={isFuture}
+                onClick={() => onOpenReview(date)}
                 title={
-                  day
-                    ? hasClosed
-                      ? `${fmtDateCN(date)} · ${day.total} 笔 · 已平仓 ${day.closed} 笔 · 净盈亏 ${fmtSignedMoney(day.pnl, true)}`
-                      : `${fmtDateCN(date)} · ${day.total} 笔持仓中`
-                    : undefined
+                  isFuture
+                    ? undefined
+                    : day
+                      ? hasClosed
+                        ? `${fmtDateCN(date)} · ${day.total} 笔 · 已平仓 ${day.closed} 笔 · 净盈亏 ${fmtSignedMoney(day.pnl, true)} · 写每日复盘`
+                        : `${fmtDateCN(date)} · ${day.total} 笔持仓中 · 写每日复盘`
+                      : `${fmtDateCN(date)} · 写每日复盘`
                 }
                 aria-label={
-                  day
-                    ? hasClosed
-                      ? `查看 ${fmtDateCN(date)} 的 ${day.total} 笔交易，已平仓 ${day.closed} 笔，净盈亏 ${fmtSignedMoney(day.pnl, true)}`
-                      : `查看 ${fmtDateCN(date)} 的 ${day.total} 笔持仓交易`
-                    : undefined
+                  isFuture
+                    ? undefined
+                    : day
+                      ? `写 ${fmtDateCN(date)} 的每日复盘；当天 ${day.total} 笔交易，已平仓 ${day.closed} 笔，净盈亏 ${fmtSignedMoney(day.pnl, true)}`
+                      : `写 ${fmtDateCN(date)} 的每日复盘`
                 }
-                className={`flex h-[68px] flex-col rounded-lg border px-2 py-1.5 text-left transition-colors ${
+                className={`relative flex h-[68px] flex-col rounded-lg border px-2 py-1.5 text-left transition-colors ${
                   day
                     ? `${
                         hasClosed ? tint(pnl, strength) : 'bg-accent-soft/60'
                       } border-line hover:border-line-2 hover:brightness-[0.985]`
-                    : `border-transparent ${isFuture ? 'bg-white' : 'bg-list/40'}`
+                    : `${
+                        isFuture
+                          ? 'border-transparent bg-white'
+                          : 'border-line/70 bg-list/40 hover:bg-list'
+                      }`
                 } ${isToday ? 'ring-1 ring-inset ring-accent/40' : ''} ${
-                  day ? '' : 'cursor-default'
+                  isFuture ? 'cursor-default' : 'cursor-pointer'
                 }`}
               >
                 <span
@@ -235,6 +244,12 @@ export function PnlCalendar({
                 >
                   {Number(date.slice(8))}
                 </span>
+                {hasReview ? (
+                  <span
+                    className="absolute right-1.5 top-1.5 h-1.5 w-1.5 rounded-full bg-accent"
+                    title="已写每日复盘"
+                  />
+                ) : null}
 
                 {day ? (
                   <span className="mt-auto block">

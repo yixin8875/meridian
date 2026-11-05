@@ -1,6 +1,27 @@
 export type Side = 'L' | 'S'
 export type TradeStatus = 'closed' | 'open'
 export type Grade = 'A' | 'B' | 'C'
+export type CashFlowKind = 'deposit' | 'withdrawal' | 'dividend'
+
+/** 账户外部资金变动；金额始终为正，方向由 kind 决定。 */
+export interface CashFlow {
+  id: string
+  accountId: string
+  date: string
+  kind: CashFlowKind
+  amount: number
+  note: string
+}
+
+/** 按账户设置的风险口径。 */
+export interface RiskConfig {
+  /** 单笔计划风险占账户权益的百分比，例如 0.8。 */
+  riskPerTradePct: number
+  /** 当日已实现亏损上限（USD）；0 表示不限制。 */
+  dailyLossLimit: number
+  /** 连续亏损达到多少笔后提示停止；0 表示不限制。 */
+  maxConsecutiveLosses: number
+}
 
 export interface Discipline {
   stopPlanned: boolean
@@ -39,6 +60,8 @@ export interface Trade {
   session: string
   status: TradeStatus
   discipline: Discipline
+  /** 交易级错误标签，例如追单、移动止损；空数组表示没有记录到明确错误。 */
+  mistakes: string[]
   note: string
   grade: Grade
   charts: ChartRef[]
@@ -56,6 +79,19 @@ export interface JournalNote {
   body: string
   tags: string[]
   mood: Mood
+}
+
+/** 每个交易日一份结构化复盘，与自由笔记并存。 */
+export interface DailyReview {
+  id: string
+  accountId: string
+  date: string
+  marketContext: string
+  plan: string
+  executionScore: number
+  violations: string[]
+  improvement: string
+  updatedAt: string
 }
 
 /** 可管理的合约：点值用于计算盈亏与 R。 */
@@ -78,6 +114,7 @@ export interface Account {
   name: string
   startingEquity: number
   feePerContract: number
+  risk: RiskConfig
   createdAt: string
 }
 
@@ -88,6 +125,8 @@ export interface AppData {
   config: TradingConfig
   trades: Trade[]
   notes: JournalNote[]
+  dailyReviews: DailyReview[]
+  cashFlows: CashFlow[]
 }
 
 export type Page = 'overview' | 'trades' | 'mirror' | 'notes' | 'settings'

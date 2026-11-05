@@ -1,15 +1,16 @@
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { Check, ChevronDown, Plus, Settings2, Wallet } from 'lucide-react'
-import type { Account, Trade } from '../types'
+import type { Account, CashFlow, Trade } from '../types'
 import { useApp } from '../store'
 import { buildEquity } from '../lib/stats'
 import { fmtMoney } from '../lib/format'
 import { AccountDialog, type AccountValues } from './AccountDialog'
 
-function equityOf(account: Account, trades: Trade[]): number {
+function equityOf(account: Account, trades: Trade[], flows: CashFlow[]): number {
   const points = buildEquity(
     trades.filter((trade) => trade.accountId === account.id),
     account.startingEquity,
+    flows.filter((flow) => flow.accountId === account.id),
   )
   return points[points.length - 1]?.equity ?? account.startingEquity
 }
@@ -36,7 +37,10 @@ export function AccountMenu({ onManage }: { onManage: () => void }) {
     }
   }, [open])
 
-  const equity = useMemo(() => equityOf(account, data.trades), [account, data.trades])
+  const equity = useMemo(
+    () => equityOf(account, data.trades, data.cashFlows),
+    [account, data.trades, data.cashFlows],
+  )
 
   const create = (values: AccountValues) => {
     addAccount(values)
@@ -98,7 +102,7 @@ export function AccountMenu({ onManage }: { onManage: () => void }) {
                       {entry.name}
                     </span>
                     <span className="num block text-[10px] text-faint">
-                      ${fmtMoney(equityOf(entry, data.trades), false)} · {count} 笔
+                      ${fmtMoney(equityOf(entry, data.trades, data.cashFlows), false)} · {count} 笔
                     </span>
                   </span>
                   {active ? <Check size={13} className="shrink-0 text-accent" /> : null}

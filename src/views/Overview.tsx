@@ -1,15 +1,27 @@
 import { useMemo, useState } from 'react'
-import { ArrowUpRight, ChevronRight, Plus, Sparkles, Upload, Wallet } from 'lucide-react'
+import {
+  ArrowUpRight,
+  BookOpen,
+  ChevronRight,
+  Plus,
+  ShieldAlert,
+  Sparkles,
+  Upload,
+  Wallet,
+} from 'lucide-react'
 import type { Range } from '../types'
 import { useApp } from '../store'
 import { DISCIPLINE_ITEMS } from '../data/contracts'
 import {
   buildEquity,
+  cashFlowSummary,
   closedTrades,
   computeStats,
   disciplineRates,
   filterRange,
   openTrades,
+  rangeReturnPct,
+  riskStatus,
   withMean,
 } from '../lib/stats'
 import {
@@ -22,6 +34,7 @@ import {
   todayISO,
 } from '../lib/format'
 import { EquityChart } from '../components/Chart'
+import { DayReviewDialog } from '../components/DayReview'
 import { PnlCalendar } from '../components/PnlCalendar'
 import { EmptyState, IconBadge, Pnl, RValue, SideBadge } from '../components/primitives'
 
@@ -42,17 +55,20 @@ export function Overview({
   onNewNote: () => void
   onOpenDate: (date: string) => void
 }) {
-  const { trades, notes, account } = useApp()
+  const { trades, notes, account, reviews, cashFlows } = useApp()
   const [range, setRange] = useState<Range>('ALL')
+  const [reviewDate, setReviewDate] = useState<string | null>(null)
+  const reviewDates = useMemo(() => new Set(reviews.map((review) => review.date)), [reviews])
 
   const model = useMemo(() => {
-    const stats = computeStats(trades, account.startingEquity)
-    const all = withMean(buildEquity(trades, account.startingEquity))
+    const today = todayISO()
+    const stats = computeStats(trades, account.startingEquity, cashFlows)
+    const all = withMean(buildEquity(trades, account.startingEquity, cashFlows))
     const points = filterRange(all, range)
     const first = points[0]
     const last = points[points.length - 1]
-    const rangePnl = last && first ? last.equity - first.equity : 0
-    const rangePct = first && first.equity ? (rangePnl / first.equity) * 100 : 0
+    const rangePnl = last && first ? last.tradingEquity - first.tradingEquity : 0
+    const rangePct = rangeReturnPct(points)
     return {
       stats,
       points,
@@ -62,15 +78,26 @@ export function Overview({
       open: openTrades(trades),
       recent: closedTrades(trades).slice(-6).reverse(),
       rates: disciplineRates(trades),
+      flow: cashFlowSummary(cashFlows),
+      risk: riskStatus(trades, account.risk, today),
     }
-  }, [trades, account.startingEquity, range])
+  }, [trades, account.startingEquity, account.risk, cashFlows, range])
 
   const { stats, open, recent, rates } = model
+  const riskAlerts = [
+    model.risk.dailyLimitHit
+      ? `今日已实现 ${fmtSignedMoney(model.risk.todayPnl, true)}，达到每日亏损上限 ${fmtSignedMoney(-model.risk.dailyLimit, true)}`
+      : '',
+    model.risk.streakHit
+      ? `连续亏损 ${model.risk.losingStreak} 笔，达到上限 ${model.risk.streakLimit} 笔`
+      : '',
+  ].filter(Boolean)
 
-  if (!trades.length && !notes.length) {
+  if (!trades.length && !notes.length && !reviews.length && !cashFlows.length) {
     return (
-      <div className="mx-auto max-w-[760px] px-8 py-10">
-        <div className="fade-in rounded-xl border border-line bg-white p-8">
+      <>
+        <div className="mx-auto max-w-[760px] px-8 py-10">
+          <div className="fade-in rounded-xl border border-line bg-white p-8">
           <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-white shadow-[0_2px_8px_rgba(11,108,240,0.28)]">
             <Sparkles size={21} />
           </span>
@@ -93,6 +120,13 @@ export function Overview({
             </button>
             <button className="btn btn-ghost h-9 px-4" onClick={onLoadDemo}>
               先看看示例数据
+            </button>
+            <button
+              className="btn btn-ghost h-9 px-4"
+              onClick={() => setReviewDate(todayISO())}
+            >
+              <BookOpen size={14} />
+              写今日复盘
             </button>
           </div>
 
@@ -153,8 +187,19 @@ export function Overview({
             </span>
             <ChevronRight size={14} className="text-faint" />
           </button>
+          </div>
         </div>
-      </div>
+        {reviewDate ? (
+          <DayReviewDialog
+            date={reviewDate}
+            onClose={() => setReviewDate(null)}
+            onOpenTrades={(date) => {
+              setReviewDate(null)
+              onOpenDate(date)
+            }}
+          />
+        ) : null}
+      </>
     )
   }
 
@@ -252,8 +297,88 @@ export function Overview({
         ))}
       </section>
 
+      <section className="mt-3 grid grid-cols-4 divide-x divide-line rounded-xl border border-line bg-white">
+        <div className="px-4 py-3">
+          <div className="text-[10.5px] text-faint">累计净入金</div>
+          <div
+            className={`num mt-1 truncate text-[15px] font-semibold ${
+              model.flow.net > 0 ? 'text-gain' : model.flow.net < 0 ? 'text-loss' : 'text-ink'
+            }`}
+          >
+            {fmtSignedMoney(model.flow.net, true)}
+          </div>
+          <div className="mt-0.5 truncate text-[10px] text-faint">
+            入金 ${fmtMoney(model.flow.deposits, false)} · 出金 ${fmtMoney(model.flow.withdrawals, false)}
+          </div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="text-[10.5px] text-faint">今日已实现</div>
+          <div
+            className={`num mt-1 truncate text-[15px] font-semibold ${
+              model.risk.todayPnl > 0
+                ? 'text-gain'
+                : model.risk.todayPnl < 0
+                  ? 'text-loss'
+                  : 'text-ink'
+            }`}
+          >
+            {fmtSignedMoney(model.risk.todayPnl, true)}
+          </div>
+          <div className="mt-0.5 truncate text-[10px] text-faint">只计已平仓交易</div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="text-[10.5px] text-faint">每日亏损上限</div>
+          <div
+            className={`num mt-1 truncate text-[15px] font-semibold ${
+              model.risk.dailyLimitHit ? 'text-loss' : 'text-ink'
+            }`}
+          >
+            {model.risk.dailyLimit > 0
+              ? fmtSignedMoney(-model.risk.dailyLimit, true)
+              : '未设置'}
+          </div>
+          <div className="mt-0.5 truncate text-[10px] text-faint">
+            {model.risk.dailyLimit > 0 ? '达到后停止开新仓' : '可在账户设置中配置'}
+          </div>
+        </div>
+        <div className="px-4 py-3">
+          <div className="text-[10.5px] text-faint">连续亏损</div>
+          <div
+            className={`num mt-1 truncate text-[15px] font-semibold ${
+              model.risk.streakHit ? 'text-loss' : 'text-ink'
+            }`}
+          >
+            {model.risk.losingStreak} 笔
+          </div>
+          <div className="mt-0.5 truncate text-[10px] text-faint">
+            {model.risk.streakLimit > 0 ? `上限 ${model.risk.streakLimit} 笔` : '未设置上限'}
+          </div>
+        </div>
+      </section>
+
+      {riskAlerts.length ? (
+        <div className="mt-2 flex items-start gap-2 rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11px] leading-relaxed text-loss">
+          <ShieldAlert size={14} className="mt-0.5 shrink-0" />
+          <span>{riskAlerts.join('；')}。建议停止开新仓，先复盘。</span>
+        </div>
+      ) : null}
+
       <div className="mt-3">
-        <PnlCalendar trades={trades} onOpenDate={onOpenDate} />
+        <PnlCalendar
+          trades={trades}
+          reviewDates={reviewDates}
+          onOpenReview={setReviewDate}
+        />
+        {reviewDate ? (
+          <DayReviewDialog
+            date={reviewDate}
+            onClose={() => setReviewDate(null)}
+            onOpenTrades={(date) => {
+              setReviewDate(null)
+              onOpenDate(date)
+            }}
+          />
+        ) : null}
       </div>
 
       <div className="mt-3 grid grid-cols-[1.35fr_1fr] gap-3">

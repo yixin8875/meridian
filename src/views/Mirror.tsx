@@ -6,6 +6,7 @@ import {
   computeStats,
   disciplineRates,
   groupTrades,
+  mistakeCost,
   rHistogram,
   weekStats,
 } from '../lib/stats'
@@ -22,6 +23,7 @@ export function Mirror() {
     const week = weekStats(trades)
     const hist = rHistogram(trades)
     const rates = disciplineRates(trades)
+    const mistakes = mistakeCost(trades)
     const maxCount = Math.max(1, ...hist.map((bucket) => bucket.count))
     const activeWeek = week.filter((day) => day.count > 0)
     const bestDay = [...activeWeek].sort((a, b) => b.avgR - a.avgR)[0]
@@ -34,6 +36,7 @@ export function Mirror() {
       hist,
       maxCount,
       rates,
+      mistakes,
       bestDay,
       worstDay,
       bestSetup: setups[0],
@@ -143,6 +146,75 @@ export function Mirror() {
             </div>
           ))}
         </div>
+      </section>
+
+      <section className="mt-3 rounded-xl border border-line bg-white px-5 py-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
+          <div>
+            <h2 className="text-[12.5px] font-semibold text-ink">错误成本</h2>
+            <p className="mt-0.5 text-[10.5px] text-faint">
+              带错误标签的交易，和没有标记错误的交易相比
+            </p>
+          </div>
+          <span className="num text-[10.5px] text-faint">
+            {model.mistakes.tagged} 笔有标签 · {model.mistakes.clean} 笔无标签
+          </span>
+        </div>
+
+        <div className="mt-3 grid grid-cols-2 gap-2.5">
+          <div className="rounded-lg border border-loss/15 bg-loss-soft/45 px-3.5 py-3">
+            <div className="text-[10px] font-medium text-loss">有错误标签</div>
+            <div className="mt-1 flex items-baseline justify-between gap-2">
+              <Pnl value={model.mistakes.taggedNetPnl} className="text-[17px] font-semibold" />
+              <span className="num text-[10.5px] text-loss/80">
+                平均 {fmtR(model.mistakes.taggedAvgR)}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[10px] text-faint">{model.mistakes.tagged} 笔已平仓</div>
+          </div>
+          <div className="rounded-lg border border-gain/15 bg-gain-soft/45 px-3.5 py-3">
+            <div className="text-[10px] font-medium text-gain">无错误标签</div>
+            <div className="mt-1 flex items-baseline justify-between gap-2">
+              <Pnl value={model.mistakes.cleanNetPnl} className="text-[17px] font-semibold" />
+              <span className="num text-[10.5px] text-gain/80">
+                平均 {fmtR(model.mistakes.cleanAvgR)}
+              </span>
+            </div>
+            <div className="mt-0.5 text-[10px] text-faint">{model.mistakes.clean} 笔已平仓</div>
+          </div>
+        </div>
+
+        {model.mistakes.tags.length ? (
+          <div className="mt-4 border-t border-line pt-3">
+            <div className="grid grid-cols-[minmax(0,1fr)_48px_88px_52px] gap-x-3 px-1 text-[9.5px] text-faint">
+              <span>错误标签</span>
+              <span className="text-right">笔数</span>
+              <span className="text-right">净盈亏</span>
+              <span className="text-right">平均 R</span>
+            </div>
+            <div className="mt-1 space-y-1">
+              {model.mistakes.tags.map((tag) => (
+                <div
+                  key={tag.key}
+                  className="grid grid-cols-[minmax(0,1fr)_48px_88px_52px] items-center gap-x-3 rounded-md px-1 py-1.5 text-[11px] hover:bg-list"
+                >
+                  <span className="truncate text-ink-2">{tag.key}</span>
+                  <span className="num text-right text-faint">{tag.count}</span>
+                  <Pnl value={tag.netPnl} className="text-right text-[11px]" />
+                  <span
+                    className={`num text-right ${tag.avgR >= 0 ? 'text-gain' : 'text-loss'}`}
+                  >
+                    {fmtR(tag.avgR)}
+                  </span>
+                </div>
+              ))}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 border-t border-line pt-3 text-[10.5px] text-faint">
+            还没有交易标记错误标签。记录交易时勾选“追单、移动止损”等，就能看到具体错误花了多少钱。
+          </p>
+        )}
       </section>
 
       <div className="mt-3 grid grid-cols-[1.3fr_1fr] gap-3">
@@ -297,6 +369,16 @@ export function Mirror() {
                 <span>
                   {model.bestDay.key} 表现最好（{fmtR(model.bestDay.avgR)}），{model.worstDay.key}{' '}
                   最差（{fmtR(model.worstDay.avgR)}）。
+                </span>
+              </li>
+            ) : null}
+            {model.mistakes.tagged ? (
+              <li className="flex gap-2">
+                <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-loss" />
+                <span>
+                  带错误标签的交易平均 {fmtR(model.mistakes.taggedAvgR)}，未标记交易平均{' '}
+                  {fmtR(model.mistakes.cleanAvgR)}，差距{' '}
+                  {fmtR(model.mistakes.cleanAvgR - model.mistakes.taggedAvgR)}。
                 </span>
               </li>
             ) : null}

@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react'
-import { Check } from 'lucide-react'
+import { AlertTriangle, Check } from 'lucide-react'
 import type {
   ChartRef,
   Discipline,
@@ -9,8 +9,9 @@ import type {
   TradeStatus,
   TradingConfig,
 } from '../types'
-import { DISCIPLINE_ITEMS, pointValueOf } from '../data/contracts'
+import { DISCIPLINE_ITEMS, MISTAKE_TAGS, pointValueOf } from '../data/contracts'
 import { fmtMoney, fmtR, fmtSignedMoney, todayISO, uid } from '../lib/format'
+import { currentEquity, riskStatus, suggestedQty } from '../lib/stats'
 import { useApp } from '../store'
 import { Modal } from './primitives'
 import { ChartLightbox, ChartUploader } from './Charts'
@@ -33,6 +34,7 @@ interface FormState {
   status: TradeStatus
   note: string
   discipline: Discipline
+  mistakes: string[]
 }
 
 const BLANK: FormState = {
@@ -57,6 +59,7 @@ const BLANK: FormState = {
     sizePlanned: true,
     journaled: false,
   },
+  mistakes: [],
 }
 
 function toForm(trade: Trade | null, config: TradingConfig): FormState {
@@ -88,6 +91,7 @@ function toForm(trade: Trade | null, config: TradingConfig): FormState {
     status: trade.status,
     note: trade.note,
     discipline: { ...trade.discipline },
+    mistakes: [...(trade.mistakes ?? [])],
   }
 }
 
@@ -125,7 +129,7 @@ export function TradeForm({
   onClose: () => void
   onSubmit: (trade: Trade) => void
 }) {
-  const { config } = useApp()
+  const { config, data, account } = useApp()
   const [form, setForm] = useState<FormState>(BLANK)
   const [error, setError] = useState<string | null>(null)
   const [charts, setCharts] = useState<ChartRef[]>([])
@@ -199,6 +203,24 @@ export function TradeForm({
     setCharts((prev) => prev.filter((chart) => chart.id !== id))
   }
 
+  const accountTrades = useMemo(
+    () => data.trades.filter((item) => item.accountId === account.id),
+    [data.trades, account.id],
+  )
+  const equity = useMemo(
+    () =>
+      currentEquity(
+        accountTrades,
+        account.startingEquity,
+        data.cashFlows.filter((flow) => flow.accountId === account.id),
+      ),
+    [accountTrades, account.startingEquity, account.id, data.cashFlows],
+  )
+  const riskState = useMemo(
+    () => riskStatus(accountTrades, account.risk, todayISO()),
+    [accountTrades, account.risk],
+  )
+
   const calc = useMemo(() => {
     const pointValue = pointValueOf(form.symbol, config.contracts)
     const qty = Math.max(0, Math.round(num(form.qty)))
@@ -212,6 +234,14 @@ export function TradeForm({
     const risk = Math.abs(entry - stop) * pointValue * qty
     const r = risk > 0 ? gross / risk : 0
     const session = form.session || config.sessions[0] || '早盘'
+    const riskPct = equity > 0 ? (risk / equity) * 100 : 0
+    const suggested = suggestedQty(
+      equity,
+      account.risk.riskPerTradePct,
+      entry,
+      stop,
+      pointValue,
+    )
     return {
       pointValue,
       qty,
@@ -219,6 +249,8 @@ export function TradeForm({
       fees,
       pnl,
       risk,
+      riskPct,
+      suggested,
       r,
       session,
       valid:
@@ -229,7 +261,23 @@ export function TradeForm({
         stop !== entry &&
         (form.status === 'open' ? num(form.current) > 0 : num(form.exit) > 0),
     }
-  }, [form, feePerContract, config.contracts, config.sessions])
+  }, [
+    form,
+    feePerContract,
+    config.contracts,
+    config.sessions,
+    equity,
+    account.risk.riskPerTradePct,
+  ])
+
+  const riskWarnings = [
+    riskState.dailyLimitHit
+      ? `今日已实现 ${fmtSignedMoney(riskState.todayPnl, true)}，达到每日亏损上限 ${fmtSignedMoney(-riskState.dailyLimit, true)}`
+      : '',
+    riskState.streakHit
+      ? `连续亏损 ${riskState.losingStreak} 笔，达到上限 ${riskState.streakLimit} 笔`
+      : '',
+  ].filter(Boolean)
 
   const set = <K extends keyof FormState>(key: K, value: FormState[K]) =>
     setForm((prev) => ({ ...prev, [key]: value }))
@@ -265,6 +313,7 @@ export function TradeForm({
       session: calc.session,
       status: form.status,
       discipline: form.discipline,
+      mistakes: form.mistakes,
       note: form.note.trim(),
       grade: gradeOf(calc.r),
       charts,
@@ -299,7 +348,24 @@ export function TradeForm({
               {fmtR(calc.r)}
             </span>
             <span className="text-faint">风险</span>
-            <span className="num text-ink-2">${fmtMoney(calc.risk, false)}</span>
+            <span
+              className={`num ${
+                calc.riskPct > account.risk.riskPerTradePct ? 'text-loss' : 'text-ink-2'
+              }`}
+            >
+              ${fmtMoney(calc.risk, false)} · {calc.riskPct.toFixed(2)}%
+            </span>
+            {calc.suggested > 0 ? (
+              <button
+                type="button"
+                className="text-accent hover:underline"
+                onClick={() => set('qty', String(calc.suggested))}
+              >
+                建议 {calc.suggested} 手
+              </button>
+            ) : calc.risk > 0 ? (
+              <span className="text-warn">预算不足 1 手</span>
+            ) : null}
           </div>
           <div className="flex items-center gap-2">
             <button className="btn btn-secondary" onClick={close}>
@@ -318,6 +384,20 @@ export function TradeForm({
           <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
             {error}
           </div>
+        ) : null}
+
+        {!trade && riskWarnings.length ? (
+          <div className="flex items-start gap-2 rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11px] leading-relaxed text-loss">
+            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+            <span>{riskWarnings.join('；')}。建议停止开新仓，先复盘。</span>
+          </div>
+        ) : null}
+
+        {calc.riskPct > account.risk.riskPerTradePct ? (
+          <p className="text-[10px] text-loss">
+            本笔计划风险占权益 {calc.riskPct.toFixed(2)}%，超过账户单笔上限{' '}
+            {account.risk.riskPerTradePct}%。
+          </p>
         ) : null}
 
         <div className="grid grid-cols-4 gap-3">
@@ -555,6 +635,44 @@ export function TradeForm({
               )
             })}
           </div>
+        </div>
+
+        <div>
+          <div className="flex flex-wrap items-baseline justify-between gap-2">
+            <span className="field-label">错误标签</span>
+            <span className="text-[10px] text-faint">可选 · 用来区分“结果不好”和“过程做错”</span>
+          </div>
+          <div className="mt-1 flex flex-wrap gap-1.5">
+            {MISTAKE_TAGS.map((tag) => {
+              const active = form.mistakes.includes(tag)
+              return (
+                <button
+                  type="button"
+                  key={tag}
+                  onClick={() =>
+                    set(
+                      'mistakes',
+                      active
+                        ? form.mistakes.filter((item) => item !== tag)
+                        : [...form.mistakes, tag],
+                    )
+                  }
+                  className={`inline-flex h-7 items-center rounded-full border px-2.5 text-[11px] transition-colors ${
+                    active
+                      ? 'border-loss/30 bg-loss-soft text-loss'
+                      : 'border-line bg-white text-muted hover:bg-hover'
+                  }`}
+                >
+                  {tag}
+                </button>
+              )
+            })}
+          </div>
+          {form.mistakes.length ? (
+            <p className="mt-1.5 text-[10px] text-faint">
+              已标记 {form.mistakes.length} 项；保存后可在镜像分析查看错误成本。
+            </p>
+          ) : null}
         </div>
 
         <ChartUploader
