@@ -1327,7 +1327,7 @@ export function Settings() {
       </section>
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-faint">
-        <span>MERIDIAN 0.3.4 · Tauri 2 · Rust · React · Tailwind CSS</span>
+        <span>MERIDIAN 0.4.0 · Tauri 2 · Rust · React · Tailwind CSS</span>
         <span>数据仅保存在本机，不上传任何服务器。</span>
       </div>
 
