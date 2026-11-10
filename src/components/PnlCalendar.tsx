@@ -4,6 +4,7 @@ import type { Trade } from '../types'
 import {
   fmtCompactMoney,
   fmtDateCN,
+  fmtMoney,
   fmtSignedMoney,
   parseISO,
   todayISO,
@@ -37,7 +38,7 @@ function initialMonth(trades: Trade[]): string {
 function signedCompact(n: number): string {
   if (n > 0) return `+${fmtCompactMoney(n)}`
   if (n < 0) return fmtCompactMoney(n)
-  return '$0'
+  return fmtCompactMoney(0)
 }
 
 function tint(pnl: number, strength: number): string {
@@ -285,7 +286,7 @@ export function PnlCalendar({
                       : 'text-muted'
                 }`}
               >
-                {model.monthPnl === 0 ? '$0.00' : fmtSignedMoney(model.monthPnl, true)}
+                {model.monthPnl === 0 ? fmtMoney(0) : fmtSignedMoney(model.monthPnl, true)}
               </div>
             </div>
             <div>

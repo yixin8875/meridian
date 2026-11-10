@@ -267,7 +267,7 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
             {monthEN(active.point.date)} {fmtDateShort(active.point.date)} · 第 {active.i + 1} 个交易日
           </div>
           <div className="num mt-1 text-[17px] font-semibold text-ink">
-            ${fmtMoney(active.point.equity, false)}
+            {fmtMoney(active.point.equity, false)}
           </div>
           <div className="mt-2 space-y-1 border-t border-line pt-2 text-[10.5px]">
             <div className="flex justify-between gap-6">

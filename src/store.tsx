@@ -10,6 +10,7 @@ import {
 } from 'react'
 import type {
   Account,
+  AccountCurrency,
   AppData,
   CashFlow,
   ContractConfig,
@@ -25,10 +26,11 @@ import { DEFAULT_RISK } from './data/contracts'
 import { createSeedData } from './data/seed'
 import { EMPTY_DATA, hasTauri, loadState, saveState } from './lib/storage'
 import { deleteChart } from './lib/charts'
-import { uid } from './lib/format'
+import { setDisplayCurrency, uid } from './lib/format'
 
 export interface NewAccountInput {
   name: string
+  currency: AccountCurrency
   startingEquity: number
   feePerContract: number
   risk: RiskConfig
@@ -50,6 +52,8 @@ interface StoreValue {
   cashFlows: CashFlow[]
   setActiveAccount: (id: string) => void
   addAccount: (input: NewAccountInput) => Account
+  /** 切换账户币种，并按 ×100 / ×0.01 重标定已有金额（真实价值不变）。 */
+  setAccountCurrency: (currency: AccountCurrency, accountId?: string) => void
   updateAccount: (
     patch: Partial<Pick<Account, 'name' | 'startingEquity' | 'feePerContract' | 'risk' | 'mt5'>>,
   ) => void
@@ -191,7 +195,11 @@ export function StoreProvider({ children }: { children: ReactNode }) {
   const mutate = useCallback((updater: (prev: AppData) => AppData) => {
     dirty.current = true
     setUnsaved(true)
-    setData((prev) => updater(prev))
+    // 同步更新 latest，让同一轮操作里的后续命令（例如先切币种再同步 MT5）
+    // 读到刚写入的数据，而不是等下一次渲染后的 effect。
+    const next = updater(latest.current)
+    latest.current = next
+    setData(next)
   }, [])
 
   const account = useMemo(
@@ -201,6 +209,9 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       EMPTY_DATA.accounts[0]!,
     [data.accounts, data.activeAccountId],
   )
+
+  // 金额格式化默认跟随当前账户币种；在子组件渲染前同步设置，避免首帧闪成美元。
+  setDisplayCurrency(account.currency)
 
   const trades = useMemo(
     () => data.trades.filter((trade) => trade.accountId === account.id),
@@ -228,6 +239,61 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [data.cashFlows, account.id],
   )
 
+  const setAccountCurrency = useCallback<StoreValue['setAccountCurrency']>(
+    (currency, accountId) => {
+      mutate((prev) => {
+        const targetId = accountId ?? prev.activeAccountId
+        const target = prev.accounts.find((entry) => entry.id === targetId)
+        if (!target || target.currency === currency) return prev
+        // USD → USC 金额 ×100；USC → USD 金额 ×0.01。价格、手数与 R 倍数不变。
+        const factor = currency === 'USC' ? 100 : 0.01
+        const scale = (value: number) => Math.round(value * factor * 1e6) / 1e6
+        const accountSymbols = new Set(
+          prev.trades
+            .filter((trade) => trade.accountId === targetId)
+            .map((trade) => trade.symbol),
+        )
+        // 其他账户也在用的合约不改点值，避免连带改变别人的计算口径。
+        const otherSymbols = new Set(
+          prev.trades
+            .filter((trade) => trade.accountId !== targetId)
+            .map((trade) => trade.symbol),
+        )
+        return {
+          ...prev,
+          accounts: prev.accounts.map((entry) =>
+            entry.id === targetId
+              ? {
+                  ...entry,
+                  currency,
+                  startingEquity: scale(entry.startingEquity),
+                  feePerContract: scale(entry.feePerContract),
+                  risk: { ...entry.risk, dailyLossLimit: scale(entry.risk.dailyLossLimit) },
+                }
+              : entry,
+          ),
+          trades: prev.trades.map((trade) =>
+            trade.accountId === targetId
+              ? { ...trade, pnl: scale(trade.pnl), fees: scale(trade.fees) }
+              : trade,
+          ),
+          cashFlows: prev.cashFlows.map((flow) =>
+            flow.accountId === targetId ? { ...flow, amount: scale(flow.amount) } : flow,
+          ),
+          config: {
+            ...prev.config,
+            contracts: prev.config.contracts.map((contract) =>
+              accountSymbols.has(contract.symbol) && !otherSymbols.has(contract.symbol)
+                ? { ...contract, pointValue: scale(contract.pointValue) }
+                : contract,
+            ),
+          },
+        }
+      })
+    },
+    [mutate],
+  )
+
   const setActiveAccount = useCallback(
     (id: string) => {
       mutate((prev) =>
@@ -242,6 +308,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       const next: Account = {
         id: uid('acc'),
         name: input.name.trim() || '新账户',
+        currency: input.currency === 'USC' ? 'USC' : 'USD',
         startingEquity: input.startingEquity > 0 ? input.startingEquity : 100000,
         feePerContract: input.feePerContract >= 0 ? input.feePerContract : 2.5,
         risk: { ...DEFAULT_RISK, ...input.risk },
@@ -956,6 +1023,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cashFlows,
       setActiveAccount,
       addAccount,
+      setAccountCurrency,
       updateAccount,
       deleteAccount,
       addTrade,
@@ -1010,6 +1078,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       cashFlows,
       setActiveAccount,
       addAccount,
+      setAccountCurrency,
       updateAccount,
       deleteAccount,
       addTrade,

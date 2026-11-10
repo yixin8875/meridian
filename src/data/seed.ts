@@ -521,6 +521,7 @@ export function createSeedData(): AppData {
       {
         id: DEMO_ACCOUNT_ID,
         name: '私人账户 · 示例数据',
+        currency: 'USD',
         startingEquity: 370000,
         feePerContract: 2.5,
         risk: {

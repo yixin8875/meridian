@@ -80,14 +80,6 @@ export interface Mt5EnvResult {
   detail: string
 }
 
-/** 美分账户（USC / EUC…）的金额按 1/100 折算为 USD。 */
-export function currencyScale(currency: string): number {
-  const code = currency.trim().toUpperCase()
-  if (!code) return 1
-  const centCodes = ['USC', 'EUC', 'GBC', 'AUC', 'CNC', 'HKC', 'SGC', 'JPC', 'CHC']
-  return centCodes.includes(code) ? 0.01 : 1
-}
-
 export interface Mt5SyncRequest {
   from: string
   to: string
@@ -118,8 +110,6 @@ export interface Mt5ConvertOptions {
   disciplineItems: DisciplineItem[]
   from: string
   to: string
-  /** 账户币种到 USD 的折算系数；美分账户（USC / EUC）传 0.01。 */
-  moneyScale?: number
 }
 
 export interface Mt5UnknownSymbol {
@@ -223,7 +213,6 @@ export function buildMt5Import(
   options: Mt5ConvertOptions,
 ): Mt5ImportBundle {
   const offset = options.timeOffsetMinutes
-  const scale = options.moneyScale && options.moneyScale > 0 ? options.moneyScale : 1
   const map = options.symbolMap ?? {}
   const login = payload.account?.login != null ? String(payload.account.login) : ''
   const deals = payload.deals ?? []
@@ -263,12 +252,12 @@ export function buildMt5Import(
     const matchedVolume = outDeals.reduce((sum, deal) => sum + deal.volume, 0)
     const entry = weightedPrice(inDeals)
     const exit = outDeals.length ? weightedPrice(outDeals) : 0
-    const gross = outDeals.reduce((sum, deal) => sum + deal.profit, 0) * scale
-    const cost =
-      group.reduce(
-        (sum, deal) => sum + (deal.commission ?? 0) + (deal.swap ?? 0) + (deal.fee ?? 0),
-        0,
-      ) * scale
+    // MT5 返回的金额已经以账户币种计（美分账户即美分），这里按原值保存。
+    const gross = outDeals.reduce((sum, deal) => sum + deal.profit, 0)
+    const cost = group.reduce(
+      (sum, deal) => sum + (deal.commission ?? 0) + (deal.swap ?? 0) + (deal.fee ?? 0),
+      0,
+    )
     const entryEpoch = Math.min(...inDeals.map((deal) => deal.time))
     const exitEpoch = outDeals.length ? Math.max(...outDeals.map((deal) => deal.time)) : 0
     const open = matchedVolume < qty - 1e-8 || !outDeals.length
@@ -300,7 +289,7 @@ export function buildMt5Import(
       current: open ? (live?.price_current ?? exit ?? entry) || entry : exit,
       stop: orderByPosition.get(positionId)?.sl || live?.sl || 0,
       target: orderByPosition.get(positionId)?.tp || live?.tp || 0,
-      floating: (live?.profit ?? 0) * scale,
+      floating: live?.profit ?? 0,
       matchedVolume: matchedVolume || qty,
     })
   }
@@ -378,7 +367,7 @@ export function buildMt5Import(
   const flows: CashFlow[] = []
   for (const deal of deals) {
     if (deal.type !== 2 && deal.type !== 3) continue
-    const amount = Math.abs(deal.profit) * scale
+    const amount = Math.abs(deal.profit)
     if (amount < 0.005) continue
     const wall = wallClock(deal.time, offset)
     if (wall.date < options.from || wall.date > options.to) continue

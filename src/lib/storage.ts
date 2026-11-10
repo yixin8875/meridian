@@ -24,9 +24,10 @@ import {
   DEFAULT_MISTAKE_TAGS,
   DEFAULT_RISK,
 } from '../data/contracts'
+import { normalizeCurrency } from './format'
 
 const LOCAL_KEY = 'meridian.trader.v2'
-export const DATA_VERSION = 9
+export const DATA_VERSION = 10
 
 function isoToday(): string {
   const now = new Date()
@@ -37,6 +38,7 @@ function isoToday(): string {
 export const DEFAULT_ACCOUNT: Account = {
   id: 'acc_default',
   name: '私人账户',
+  currency: 'USD',
   startingEquity: 100000,
   feePerContract: 2.5,
   risk: { ...DEFAULT_RISK },
@@ -74,6 +76,7 @@ function normalizeAccount(raw: unknown): Account | null {
   return {
     id: obj.id,
     name: typeof obj.name === 'string' && obj.name.trim() ? obj.name.trim() : '未命名账户',
+    currency: normalizeCurrency(obj.currency),
     startingEquity:
       typeof obj.startingEquity === 'number' && obj.startingEquity > 0
         ? obj.startingEquity
@@ -442,6 +445,7 @@ export function normalizeData(raw: unknown): AppData {
           typeof legacy.accountName === 'string' && legacy.accountName.trim()
             ? legacy.accountName
             : DEFAULT_ACCOUNT.name,
+        currency: 'USD',
         startingEquity:
           typeof legacy.startingEquity === 'number' && legacy.startingEquity > 0
             ? legacy.startingEquity

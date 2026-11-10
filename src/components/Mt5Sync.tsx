@@ -4,12 +4,16 @@ import { useApp } from '../store'
 import { hasTauri } from '../lib/storage'
 import {
   buildMt5Import,
-  currencyScale,
   fetchMt5Env,
   runMt5Sync,
   type Mt5EnvResult,
 } from '../lib/mt5'
-import { todayISO } from '../lib/format'
+import {
+  currencyLabel,
+  isKnownCurrency,
+  normalizeCurrency,
+  todayISO,
+} from '../lib/format'
 
 type Tone = 'ok' | 'error' | 'info'
 
@@ -31,7 +35,7 @@ function errText(err: unknown): string {
 
 /** 设置页的 MT5 同步面板：检测运行环境、按日期区间读取本机终端并增量入库。 */
 export function Mt5Sync() {
-  const { account, config, addContract, updateAccount, syncMt5 } = useApp()
+  const { account, config, addContract, updateAccount, setAccountCurrency, syncMt5 } = useApp()
   const [env, setEnv] = useState<Mt5EnvResult | null>(null)
   const [envError, setEnvError] = useState('')
   const [checking, setChecking] = useState(false)
@@ -128,7 +132,13 @@ export function Mt5Sync() {
         password: autoLogin ? password : '',
       })
       const currency = payload.account?.currency ?? ''
-      const scale = currencyScale(currency)
+      const known = isKnownCurrency(currency)
+      const nextCurrency = known ? normalizeCurrency(currency) : normalizeCurrency(account.currency)
+      const switched = known && normalizeCurrency(account.currency) !== nextCurrency
+      if (switched) {
+        // 美分账户按美分保存：先把已有金额重标定，再写入 MT5 原币数据。
+        setAccountCurrency(nextCurrency, account.id)
+      }
       const bundle = buildMt5Import(payload, {
         accountId: account.id,
         contracts: config.contracts,
@@ -137,7 +147,6 @@ export function Mt5Sync() {
         disciplineItems: config.disciplineItems,
         from,
         to,
-        moneyScale: scale,
       })
       const created: string[] = []
       for (const item of bundle.unknown) {
@@ -167,15 +176,16 @@ export function Mt5Sync() {
       if (result.flowsAdded) parts.push(`资金流水 ${result.flowsAdded} 笔`)
       if (created.length) parts.push(`新建合约 ${created.join('、')}`)
       if (bundle.skipped) parts.push(`跳过 ${bundle.skipped} 笔`)
-      const currencyNote =
-        scale !== 1
-          ? ` · 已按 ${currency} 折算为 USD（÷${Math.round(1 / scale)}）`
-          : currency && currency !== 'USD'
-            ? ` · 账户币种 ${currency}（未做汇率换算）`
-            : ''
+      const currencyNote = switched
+        ? ` · 账户币种已切换为${currencyLabel(nextCurrency)}，历史金额已按 ×${
+            nextCurrency === 'USC' ? 100 : '0.01'
+          } 换算`
+        : ` · 账户币种 ${currencyLabel(nextCurrency)}`
+      const centNote = nextCurrency === 'USC' ? '，金额按美分原值显示' : ''
+      const foreignNote = !known && currency ? ` · MT5 币种 ${currency.toUpperCase()}（未做汇率换算）` : ''
       setNotice({
         tone: result.added || result.updated || result.flowsAdded ? 'ok' : 'info',
-        text: `${parts.join('，')}${currencyNote}`,
+        text: `${parts.join('，')}${currencyNote}${centNote}${foreignNote}`,
       })
     } catch (err) {
       setNotice({ tone: 'error', text: errText(err) })
@@ -196,7 +206,7 @@ export function Mt5Sync() {
           <h2 className="text-[12.5px] font-semibold text-ink">MT5 自动同步</h2>
           <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">
             直接读取本机 MetaTrader 5 终端的成交与持仓，按 position 聚合成交易后写入当前账户「
-            {account.name}」。再次同步会更新已有记录，保留你填的复盘、评级与标注。
+            {account.name}」（{currencyLabel(account.currency)}）。再次同步会更新已有记录，保留你填的复盘、评级与标注。
           </p>
         </div>
         <button

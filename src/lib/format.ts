@@ -1,7 +1,42 @@
+import type { AccountCurrency } from '../types'
+
 const moneyFmt = new Intl.NumberFormat('en-US', {
   minimumFractionDigits: 2,
   maximumFractionDigits: 2,
 })
+
+/** MT5 里常见的美分账户币种代码。 */
+const CENT_CODES = new Set(['USC', 'EUC', 'GBC', 'AUC', 'CNC', 'HKC', 'SGC', 'JPC', 'CHC'])
+
+/** 把外部币种代码归一到应用支持的两种账户币种。 */
+export function normalizeCurrency(code?: string | null): AccountCurrency {
+  return CENT_CODES.has((code ?? '').trim().toUpperCase()) ? 'USC' : 'USD'
+}
+
+/** 是否是应用能明确识别的账户币种（USD 或 MT5 美分币种）。 */
+export function isKnownCurrency(code?: string | null): boolean {
+  const value = (code ?? '').trim().toUpperCase()
+  return value === 'USD' || CENT_CODES.has(value)
+}
+
+export function currencyLabel(code?: string | null): string {
+  return normalizeCurrency(code) === 'USC' ? '美分 (USC)' : '美元 (USD)'
+}
+
+export function currencyUnit(code?: string | null): string {
+  return normalizeCurrency(code) === 'USC' ? '美分' : '美元'
+}
+
+let displayCurrency: AccountCurrency = 'USD'
+
+/** 全局显示币种由当前账户决定；跨账户列表应显式传入币种。 */
+export function setDisplayCurrency(code?: string | null): void {
+  displayCurrency = normalizeCurrency(code)
+}
+
+export function currentCurrency(): AccountCurrency {
+  return displayCurrency
+}
 
 const intFmt = new Intl.NumberFormat('en-US', {
   maximumFractionDigits: 0,
@@ -30,18 +65,24 @@ export function todayISO(): string {
   return toISO(new Date())
 }
 
-export function fmtMoney(n: number, cents = true): string {
-  return cents ? moneyFmt.format(n) : intFmt.format(n)
+/** 金额按账户币种显示：美元为 $1,234.56，美分为 1,234.56 ¢。 */
+export function fmtMoney(n: number, cents = true, currency?: string): string {
+  const value = cents ? moneyFmt.format(n) : intFmt.format(n)
+  return normalizeCurrency(currency ?? displayCurrency) === 'USC' ? `${value} ¢` : `$${value}`
 }
 
-export function fmtSignedMoney(n: number, cents = true): string {
-  const abs = fmtMoney(Math.abs(n), cents)
-  return `${n < 0 ? '−' : '+'}$${abs}`
+export function fmtSignedMoney(n: number, cents = true, currency?: string): string {
+  return `${n < 0 ? '−' : '+'}${fmtMoney(Math.abs(n), cents, currency)}`
 }
 
-export function fmtCompactMoney(n: number): string {
+export function fmtCompactMoney(n: number, currency?: string): string {
   const abs = Math.abs(n)
   const sign = n < 0 ? '−' : ''
+  if (normalizeCurrency(currency ?? displayCurrency) === 'USC') {
+    if (abs >= 1_000_000) return `${sign}${(abs / 1_000_000).toFixed(1)}m ¢`
+    if (abs >= 1_000) return `${sign}${Math.round(abs / 100) / 10}k ¢`
+    return `${sign}${Math.round(abs)} ¢`
+  }
   if (abs >= 1_000_000) return `${sign}$${(abs / 1_000_000).toFixed(1)}m`
   if (abs >= 1_000) return `${sign}$${Math.round(abs / 100) / 10}k`
   return `${sign}$${Math.round(abs)}`

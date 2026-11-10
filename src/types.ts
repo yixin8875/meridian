@@ -2,6 +2,11 @@ export type Side = 'L' | 'S'
 export type TradeStatus = 'closed' | 'open'
 export type Grade = 'A' | 'B' | 'C'
 export type CashFlowKind = 'deposit' | 'withdrawal' | 'dividend'
+/**
+ * 账户计价币种。USD = 美元账户；USC = 美分账户，
+ * 账户内所有金额（权益、盈亏、手续费、流水）都以美分保存与显示。
+ */
+export type AccountCurrency = 'USD' | 'USC'
 
 /** 账户外部资金变动；金额始终为正，方向由 kind 决定。 */
 export interface CashFlow {
@@ -19,7 +24,7 @@ export interface CashFlow {
 export interface RiskConfig {
   /** 单笔计划风险占账户权益的百分比，例如 0.8。 */
   riskPerTradePct: number
-  /** 当日已实现亏损上限（USD）；0 表示不限制。 */
+  /** 当日已实现亏损上限（账户币种）；0 表示不限制。 */
   dailyLossLimit: number
   /** 连续亏损达到多少笔后提示停止；0 表示不限制。 */
   maxConsecutiveLosses: number
@@ -195,6 +200,8 @@ export interface Mt5Config {
 export interface Account {
   id: string
   name: string
+  /** 账户计价币种；美分账户的金额按美分原值保存。 */
+  currency: AccountCurrency
   startingEquity: number
   feePerContract: number
   risk: RiskConfig

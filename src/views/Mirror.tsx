@@ -651,7 +651,7 @@ export function Mirror() {
               <span className="mt-[7px] h-1.5 w-1.5 shrink-0 rounded-full bg-warn" />
               <span>
                 平均持仓 {fmtDuration(model.stats.avgHoldMin)}，期望{' '}
-                {fmtR(model.stats.expectancyR)}，总计 {model.stats.netPnl >= 0 ? '盈利' : '亏损'} $
+                {fmtR(model.stats.expectancyR)}，总计 {model.stats.netPnl >= 0 ? '盈利' : '亏损'}{' '}
                 {fmtMoney(Math.abs(model.stats.netPnl), false)}。
               </span>
             </li>

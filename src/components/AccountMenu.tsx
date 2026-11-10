@@ -64,7 +64,9 @@ export function AccountMenu({ onManage }: { onManage: () => void }) {
         </span>
         <span className="min-w-0 flex-1">
           <span className="block truncate text-[12px] font-medium text-ink">{account.name}</span>
-          <span className="num block text-[10.5px] text-muted">${fmtMoney(equity, false)}</span>
+          <span className="num block text-[10.5px] text-muted">
+            {fmtMoney(equity, false, account.currency)}
+          </span>
         </span>
         <ChevronDown
           size={13}
@@ -102,7 +104,12 @@ export function AccountMenu({ onManage }: { onManage: () => void }) {
                       {entry.name}
                     </span>
                     <span className="num block text-[10px] text-faint">
-                      ${fmtMoney(equityOf(entry, data.trades, data.cashFlows), false)} · {count} 笔
+                      {fmtMoney(
+                        equityOf(entry, data.trades, data.cashFlows),
+                        false,
+                        entry.currency,
+                      )}{' '}
+                      · {count} 笔
                     </span>
                   </span>
                   {active ? <Check size={13} className="shrink-0 text-accent" /> : null}

@@ -372,7 +372,7 @@ export function TradeForm({
                 calc.riskPct > account.risk.riskPerTradePct ? 'text-loss' : 'text-ink-2'
               }`}
             >
-              ${fmtMoney(calc.risk, false)} · {calc.riskPct.toFixed(2)}%
+              {fmtMoney(calc.risk, false)} · {calc.riskPct.toFixed(2)}%
             </span>
             {calc.suggested > 0 ? (
               <button
@@ -612,12 +612,12 @@ export function TradeForm({
           <div className="col-span-2 rounded-md border border-line bg-list px-3 py-2">
             <div className="flex items-center justify-between text-[10.5px] text-faint">
               <span>合约点值</span>
-              <span className="num text-ink-2">${calc.pointValue} / 点</span>
+              <span className="num text-ink-2">{fmtMoney(calc.pointValue, false)} / 点</span>
             </div>
             <div className="mt-1 flex items-center justify-between text-[10.5px] text-faint">
               <span>毛盈亏 / 手续费</span>
               <span className="num text-ink-2">
-                {fmtSignedMoney(calc.gross, true)} / ${fmtMoney(calc.fees)}
+                {fmtSignedMoney(calc.gross, true)} / {fmtMoney(calc.fees)}
               </span>
             </div>
           </div>

@@ -135,7 +135,7 @@ export function TradeDetail({
             计划风险
           </div>
           <div className="num mt-1 text-[20px] font-medium text-ink">
-            ${fmtMoney(risk, false)}
+            {fmtMoney(risk, false)}
           </div>
         </div>
         <div>
@@ -172,8 +172,8 @@ export function TradeDetail({
           <Metric label={trade.status === 'open' ? '当前价' : '出场价'}>
             <span className="font-mono text-[13px]">{price(outPrice)}</span>
           </Metric>
-          <Metric label="合约点值">${pointValue} / 点</Metric>
-          <Metric label="手续费">${fmtMoney(trade.fees)}</Metric>
+          <Metric label="合约点值">{fmtMoney(pointValue, false)} / 点</Metric>
+          <Metric label="手续费">{fmtMoney(trade.fees)}</Metric>
           <Metric label="交易评分">{trade.grade} 级</Metric>
           <Metric label="盈亏">{trade.pnl >= 0 ? '盈利' : '亏损'}</Metric>
           {trade.maeR > 0 ? (

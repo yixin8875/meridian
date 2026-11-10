@@ -27,13 +27,20 @@ import {
   type BackupStatus,
 } from '../lib/backup'
 import { buildEquity, cashFlowSummary } from '../lib/stats'
-import { fmtMoney, fmtSignedMoney, todayISO, uid } from '../lib/format'
+import { currencyUnit, fmtMoney, fmtSignedMoney, todayISO, uid } from '../lib/format'
 import { AccountDialog, type AccountValues } from '../components/AccountDialog'
 import { CashFlowDialog } from '../components/CashFlowForm'
 import { Mt5Sync } from '../components/Mt5Sync'
 import { Modal } from '../components/primitives'
 
 type Notice = { tone: 'ok' | 'error'; text: string } | null
+type SettingsTab = 'account' | 'data' | 'dictionary'
+
+const SETTINGS_TABS: { key: SettingsTab; label: string }[] = [
+  { key: 'account', label: '账户与资金' },
+  { key: 'data', label: '数据与同步' },
+  { key: 'dictionary', label: '交易字典' },
+]
 
 export function Settings() {
   const {
@@ -52,6 +59,7 @@ export function Settings() {
     storagePath,
     setActiveAccount,
     addAccount,
+    setAccountCurrency,
     updateAccount,
     deleteAccount,
     addContract,
@@ -80,6 +88,7 @@ export function Settings() {
   } = useApp()
 
   const [notice, setNotice] = useState<Notice>(null)
+  const [tab, setTab] = useState<SettingsTab>('account')
   const [copied, setCopied] = useState(false)
   const [demoConfirm, setDemoConfirm] = useState(false)
   const [clearConfirm, setClearConfirm] = useState(false)
@@ -261,7 +270,16 @@ export function Settings() {
   }
 
   const saveAccount = (values: AccountValues) => {
-    updateAccount(values)
+    if (editing && editing.currency !== values.currency) {
+      // 先按新币种重标定已有交易、流水与点值，再写入表单里的权益/手续费。
+      setAccountCurrency(values.currency, editing.id)
+    }
+    updateAccount({
+      name: values.name,
+      startingEquity: values.startingEquity,
+      feePerContract: values.feePerContract,
+      risk: values.risk,
+    })
     setEditing(null)
     setNotice({ tone: 'ok', text: '账户设置已保存，统计会按新参数重算。' })
   }
@@ -463,7 +481,25 @@ export function Settings() {
         </div>
       ) : null}
 
-      <section className="mt-5 rounded-xl border border-line bg-white">
+      <div className="mt-4 flex w-fit items-center gap-0.5 rounded-lg border border-line bg-list p-0.5">
+        {SETTINGS_TABS.map((item) => (
+          <button
+            key={item.key}
+            className={`rounded-md px-3 py-1.5 text-[11.5px] transition-colors ${
+              tab === item.key
+                ? 'bg-white font-medium text-ink shadow-[0_1px_2px_rgba(20,20,25,0.08)]'
+                : 'text-muted hover:text-ink'
+            }`}
+            onClick={() => setTab(item.key)}
+          >
+            {item.label}
+          </button>
+        ))}
+      </div>
+
+      {tab === 'account' ? (
+        <>
+      <section className="mt-3 rounded-xl border border-line bg-white">
         <div className="flex items-center justify-between gap-4 px-5 py-4">
           <div>
             <h2 className="text-[12.5px] font-semibold text-ink">账户</h2>
@@ -512,12 +548,15 @@ export function Settings() {
                         当前
                       </span>
                     ) : null}
+                    <span className="rounded bg-list px-1.5 py-0.5 text-[9.5px] text-muted">
+                      {entry.currency === 'USC' ? '美分' : 'USD'}
+                    </span>
                   </div>
                   <div className="num mt-0.5 truncate text-[10.5px] text-faint">
-                    权益 ${fmtMoney(equityOf(entry), false)} · 起始 $
-                    {fmtMoney(entry.startingEquity, false)} · 手续费 $
-                    {fmtMoney(entry.feePerContract)}/手 · {count} 笔 · {reviewCount} 篇复盘 ·{' '}
-                    {noteCount} 篇笔记
+                    权益 {fmtMoney(equityOf(entry), false, entry.currency)} · 起始{' '}
+                    {fmtMoney(entry.startingEquity, false, entry.currency)} · 手续费{' '}
+                    {fmtMoney(entry.feePerContract, true, entry.currency)}/手 · {count} 笔 ·{' '}
+                    {reviewCount} 篇复盘 · {noteCount} 篇笔记
                   </div>
                 </div>
 
@@ -610,19 +649,19 @@ export function Settings() {
           <div className="px-4 py-2.5">
             <div className="text-[9.5px] text-faint">入金</div>
             <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
-              ${fmtMoney(flowSummary.deposits, false)}
+              {fmtMoney(flowSummary.deposits, false)}
             </div>
           </div>
           <div className="px-4 py-2.5">
             <div className="text-[9.5px] text-faint">出金</div>
             <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
-              ${fmtMoney(flowSummary.withdrawals, false)}
+              {fmtMoney(flowSummary.withdrawals, false)}
             </div>
           </div>
           <div className="px-4 py-2.5">
             <div className="text-[9.5px] text-faint">分红 / 利息</div>
             <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
-              ${fmtMoney(flowSummary.dividends, false)}
+              {fmtMoney(flowSummary.dividends, false)}
             </div>
           </div>
         </div>
@@ -712,7 +751,10 @@ export function Settings() {
           当前账户累计净流入 {fmtSignedMoney(flowSummary.net, true)} · 流水只影响「{account.name}」
         </div>
       </section>
+        </>
+      ) : null}
 
+      {tab === 'dictionary' ? (
       <section className="mt-3 rounded-xl border border-line bg-white">
         <div className="px-5 py-4">
           <h2 className="text-[12.5px] font-semibold text-ink">交易字典</h2>
@@ -751,7 +793,7 @@ export function Settings() {
                     {contract.name}
                   </span>
                   <span className="num shrink-0 text-[10.5px] text-muted">
-                    ${fmtMoney(contract.pointValue, false)}/点
+                    {fmtMoney(contract.pointValue, false)}/点
                   </span>
                   <span className="num w-9 shrink-0 text-right text-[10px] text-faint">
                     {usage} 笔
@@ -1077,7 +1119,10 @@ export function Settings() {
           点击名称即可改名；纪律项改名不影响历史勾选，错误标签改名会同步历史交易与复盘。仍被使用的条目不能删除。
         </div>
       </section>
+      ) : null}
 
+      {tab === 'data' ? (
+        <>
       <section className="mt-3 rounded-xl border border-line bg-white">
         <div className="flex items-center gap-2.5 px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">
@@ -1117,7 +1162,7 @@ export function Settings() {
           <div className="mt-3 flex items-center gap-2 rounded-lg bg-list px-3 py-2 text-[10.5px] text-muted">
             <Wallet size={13} className="shrink-0 text-accent" />
             当前账户「{account.name}」：{trades.length} 笔交易（{openCount} 笔持仓中）·
-            {reviews.length} 篇每日复盘 · {notes.length} 篇笔记 · 起始权益 $
+            {reviews.length} 篇每日复盘 · {notes.length} 篇笔记 · 起始权益{' '}
             {fmtMoney(account.startingEquity, false)}
           </div>
         </div>
@@ -1233,7 +1278,7 @@ export function Settings() {
         </div>
         <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] leading-relaxed text-faint">
           缺少盈亏或 R 时，会按合约点值、入场/出场价与手续费自动计算；日期支持
-          2026-11-04、2026/11/04 与 11/04/2026。
+          2026-11-04、2026/11/04 与 11/04/2026。美分账户的盈亏、手续费与点值都按美分计。
         </div>
       </section>
 
@@ -1328,9 +1373,11 @@ export function Settings() {
           </div>
         </div>
       </section>
+        </>
+      ) : null}
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-faint">
-        <span>MERIDIAN 0.5.0 · Tauri 2 · Rust · React · Tailwind CSS</span>
+        <span>MERIDIAN 0.5.1 · Tauri 2 · Rust · React · Tailwind CSS</span>
         <span>数据仅保存在本机，不上传任何服务器。</span>
       </div>
 
@@ -1391,7 +1438,9 @@ export function Settings() {
               </label>
             </div>
             <label className="block">
-              <span className="field-label">每点价值（USD）</span>
+              <span className="field-label">
+                每点价值（{currencyUnit(account.currency)}）
+              </span>
               <input
                 name="pointValue"
                 type="number"

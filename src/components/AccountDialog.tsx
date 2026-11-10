@@ -1,11 +1,13 @@
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
-import type { Account, RiskConfig } from '../types'
+import type { Account, AccountCurrency, RiskConfig } from '../types'
 import { DEFAULT_RISK } from '../data/contracts'
+import { currencyUnit } from '../lib/format'
 import { Modal } from './primitives'
 
 export interface AccountValues {
   name: string
+  currency: AccountCurrency
   startingEquity: number
   feePerContract: number
   risk: RiskConfig
@@ -24,6 +26,7 @@ export function AccountDialog({
   onSubmit: (values: AccountValues) => void
 }) {
   const [name, setName] = useState('')
+  const [currency, setCurrency] = useState<AccountCurrency>('USD')
   const [equity, setEquity] = useState('100000')
   const [fee, setFee] = useState('2.5')
   const [riskPct, setRiskPct] = useState(String(DEFAULT_RISK.riskPerTradePct))
@@ -35,6 +38,7 @@ export function AccountDialog({
     if (!open) return
     const risk = account?.risk ?? DEFAULT_RISK
     setName(account?.name ?? '')
+    setCurrency(account?.currency ?? 'USD')
     setEquity(String(account?.startingEquity ?? 100000))
     setFee(String(account?.feePerContract ?? 2.5))
     setRiskPct(String(risk.riskPerTradePct))
@@ -42,6 +46,19 @@ export function AccountDialog({
     setStreakLimit(String(risk.maxConsecutiveLosses))
     setError(null)
   }, [open, account])
+
+  const changeCurrency = (next: AccountCurrency) => {
+    if (next === currency) return
+    const factor = next === 'USC' ? 100 : 0.01
+    const convert = (value: string) => {
+      const parsed = Number(value)
+      return Number.isFinite(parsed) ? String(Math.round(parsed * factor * 1e6) / 1e6) : value
+    }
+    setCurrency(next)
+    setEquity((value) => convert(value))
+    setFee((value) => convert(value))
+    setDailyLimit((value) => convert(value))
+  }
 
   const submit = () => {
     const parsedEquity = Number(equity)
@@ -75,6 +92,7 @@ export function AccountDialog({
     }
     onSubmit({
       name: name.trim(),
+      currency,
       startingEquity: Math.round(parsedEquity * 100) / 100,
       feePerContract: Math.round(parsedFee * 100) / 100,
       risk: {
@@ -134,21 +152,40 @@ export function AccountDialog({
           />
         </label>
 
+        <label className="block">
+          <span className="field-label">账户币种</span>
+          <select
+            name="currency"
+            className="input"
+            value={currency}
+            onChange={(event) => changeCurrency(event.target.value as AccountCurrency)}
+          >
+            <option value="USD">美元账户（USD）</option>
+            <option value="USC">美分账户（USC）</option>
+          </select>
+          <span className="mt-1 block text-[9.5px] leading-relaxed text-faint">
+            美分账户的权益、盈亏与流水都以美分保存和显示，例如 5,000.00 ¢ = $50.00。
+            {account && account.currency !== currency
+              ? ' 切换币种会把已有金额按 ×100 / ÷100 换算，真实价值不变。'
+              : ''}
+          </span>
+        </label>
+
         <div className="grid grid-cols-2 gap-3">
           <label>
-            <span className="field-label">起始权益（USD）</span>
+            <span className="field-label">起始权益（{currencyUnit(currency)}）</span>
             <input
               name="startingEquity"
               type="number"
               min={0}
-              step={100}
+              step={currency === 'USC' ? 1000 : 100}
               className="input num"
               value={equity}
               onChange={(event) => setEquity(event.target.value)}
             />
           </label>
           <label>
-            <span className="field-label">每手手续费（USD）</span>
+            <span className="field-label">每手手续费（{currencyUnit(currency)}）</span>
             <input
               name="feePerContract"
               type="number"
@@ -180,7 +217,9 @@ export function AccountDialog({
               />
             </label>
             <label>
-              <span className="text-[10px] text-faint">日亏损上限 $</span>
+              <span className="text-[10px] text-faint">
+                日亏损上限（{currencyUnit(currency)}）
+              </span>
               <input
                 name="dailyLossLimit"
                 type="number"

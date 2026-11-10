@@ -146,13 +146,13 @@ export function Overview({
             <div>
               <div className="section-label">起始权益</div>
               <div className="num mt-1.5 text-[13px] font-medium text-ink">
-                ${fmtMoney(account.startingEquity, false)}
+                {fmtMoney(account.startingEquity, false)}
               </div>
             </div>
             <div>
               <div className="section-label">每手手续费</div>
               <div className="num mt-1.5 text-[13px] font-medium text-ink">
-                ${fmtMoney(account.feePerContract)}
+                {fmtMoney(account.feePerContract)}
               </div>
             </div>
           </div>
@@ -232,7 +232,7 @@ export function Overview({
       label: '最大回撤',
       value: stats.maxDdPct ? `−${stats.maxDdPct.toFixed(2)}%` : '0.00%',
       tone: stats.maxDdPct > 0 ? 'text-loss' : 'text-ink',
-      hint: stats.maxDdAbs ? `−$${fmtMoney(stats.maxDdAbs, false)}` : '尚无回撤',
+      hint: stats.maxDdAbs ? `−${fmtMoney(stats.maxDdAbs, false)}` : '尚无回撤',
     },
   ]
 
@@ -259,7 +259,7 @@ export function Overview({
           <div>
             <div className="section-label">账户权益</div>
             <div className="num mt-1.5 text-[30px] font-semibold tracking-[-0.02em] text-ink">
-              ${fmtMoney(model.equity, false)}
+              {fmtMoney(model.equity, false)}
             </div>
             <div className="mt-1 flex items-center gap-2 text-[11.5px]">
               <span
@@ -314,7 +314,7 @@ export function Overview({
             {fmtSignedMoney(model.flow.net, true)}
           </div>
           <div className="mt-0.5 truncate text-[10px] text-faint">
-            入金 ${fmtMoney(model.flow.deposits, false)} · 出金 ${fmtMoney(model.flow.withdrawals, false)}
+            入金 {fmtMoney(model.flow.deposits, false)} · 出金 {fmtMoney(model.flow.withdrawals, false)}
           </div>
         </div>
         <div className="px-4 py-3">
