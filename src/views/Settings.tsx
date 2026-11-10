@@ -30,6 +30,7 @@ import { buildEquity, cashFlowSummary } from '../lib/stats'
 import { fmtMoney, fmtSignedMoney, todayISO, uid } from '../lib/format'
 import { AccountDialog, type AccountValues } from '../components/AccountDialog'
 import { CashFlowDialog } from '../components/CashFlowForm'
+import { Mt5Sync } from '../components/Mt5Sync'
 import { Modal } from '../components/primitives'
 
 type Notice = { tone: 'ok' | 'error'; text: string } | null
@@ -1235,6 +1236,8 @@ export function Settings() {
           2026-11-04、2026/11/04 与 11/04/2026。
         </div>
       </section>
+
+      <Mt5Sync />
 
       <section className="mt-3 rounded-xl border border-line bg-white">
         <div className="px-5 py-4">

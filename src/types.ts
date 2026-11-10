@@ -11,6 +11,8 @@ export interface CashFlow {
   kind: CashFlowKind
   amount: number
   note: string
+  /** 外部来源去重键，例如 "mt5:12345678:deal:9001"；手工记录为空。 */
+  externalId?: string
 }
 
 /** 按账户设置的风险口径。 */
@@ -123,6 +125,10 @@ export interface Trade {
   note: string
   grade: Grade
   charts: ChartRef[]
+  /** 外部来源去重键，例如 "mt5:12345678:position:9001"；手工记录为空。 */
+  externalId?: string
+  /** 记录来源；旧数据没有该字段时视为手工记录。 */
+  source?: 'manual' | 'csv' | 'mt5'
 }
 
 export type NoteKind = '盘前' | '盘中' | '盘后' | '周总结'
@@ -171,6 +177,20 @@ export interface TradingConfig {
   checklists: SetupChecklist[]
 }
 
+/** 已关联的 MT5：终端路径、账号与服务端时间基准。 */
+export interface Mt5Config {
+  login: string
+  server: string
+  /** 终端 terminal64.exe 的路径；为空时自动探测。 */
+  terminalPath: string
+  /** 记录时间使用的时区偏移（分钟），默认本机时区。 */
+  timeOffsetMinutes: number
+  /** MT5 交易品种 → 应用合约代码；未映射的品种同步时自动创建。 */
+  symbolMap: Record<string, string>
+  /** 上次成功同步的 ISO 时间；为空表示从未同步。 */
+  lastSyncAt: string
+}
+
 /** 交易账户：起始权益与手续费都按账户独立计算。 */
 export interface Account {
   id: string
@@ -179,6 +199,7 @@ export interface Account {
   feePerContract: number
   risk: RiskConfig
   createdAt: string
+  mt5?: Mt5Config
 }
 
 export interface AppData {

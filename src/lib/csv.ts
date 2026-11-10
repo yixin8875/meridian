@@ -148,7 +148,7 @@ function parseSide(value: string): Side {
   return v.includes('空') || v === 's' || v.includes('short') || v.includes('卖') ? 'S' : 'L'
 }
 
-function sessionOf(time: string): string {
+export function sessionOf(time: string): string {
   const minutes = minutesOf(time)
   if (minutes === null) return '早盘'
   if (minutes < 11 * 60) return '早盘'
@@ -156,7 +156,7 @@ function sessionOf(time: string): string {
   return '尾盘'
 }
 
-function gradeOf(r: number): Grade {
+export function gradeOf(r: number): Grade {
   if (r >= 1.5) return 'A'
   if (r >= -0.4) return 'B'
   return 'C'

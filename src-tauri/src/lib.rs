@@ -710,6 +710,254 @@ fn restore_backup(app: tauri::AppHandle, source: String) -> Result<RestoreInfo, 
     })
 }
 
+/// MT5 自动同步：探测 Python、MetaTrader5 包与终端路径。
+#[derive(Serialize)]
+struct Mt5Env {
+    python: Option<String>,
+    python_version: String,
+    package: bool,
+    package_version: String,
+    terminal: Option<String>,
+    /// 本机检测到的全部 terminal64.exe，按最近使用排序，供用户手动选择。
+    terminals: Vec<String>,
+    detail: String,
+}
+
+fn python_candidates() -> Vec<(String, Vec<String>)> {
+    vec![
+        ("py".to_string(), vec!["-3".to_string()]),
+        ("python".to_string(), Vec::new()),
+        ("python3".to_string(), Vec::new()),
+    ]
+}
+
+fn hide_console(command: &mut std::process::Command) {
+    #[cfg(windows)]
+    {
+        use std::os::windows::process::CommandExt;
+        command.creation_flags(0x0800_0000);
+    }
+}
+
+fn detect_python() -> Option<(String, Vec<String>, String)> {
+    for (program, prefix) in python_candidates() {
+        let mut command = std::process::Command::new(&program);
+        command.args(&prefix).arg("--version");
+        hide_console(&mut command);
+        let Ok(output) = command.output() else { continue };
+        if !output.status.success() {
+            continue;
+        }
+        let version = format!(
+            "{}{}",
+            String::from_utf8_lossy(&output.stdout),
+            String::from_utf8_lossy(&output.stderr)
+        )
+        .trim()
+        .to_string();
+        if version.contains("Python 3") {
+            return Some((program, prefix, version));
+        }
+    }
+    None
+}
+
+fn run_python(program: &str, prefix: &[String], args: &[&str]) -> Result<String, String> {
+    let mut command = std::process::Command::new(program);
+    command.args(prefix).args(args);
+    hide_console(&mut command);
+    let output = command
+        .output()
+        .map_err(|e| format!("无法启动 Python：{e}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    if output.status.success() && !stdout.is_empty() {
+        Ok(stdout)
+    } else if stderr.is_empty() {
+        Err(stdout)
+    } else {
+        Err(stderr)
+    }
+}
+
+/// 列出本机 MT5 终端：先按数据目录的最近使用时间，再补充常见安装位置。
+fn terminal_candidates() -> Vec<String> {
+    let mut found: Vec<String> = Vec::new();
+    if let Ok(appdata) = std::env::var("APPDATA") {
+        let root = Path::new(&appdata).join("MetaQuotes").join("Terminal");
+        if let Ok(entries) = fs::read_dir(&root) {
+            let mut dirs: Vec<PathBuf> = entries.flatten().map(|entry| entry.path()).collect();
+            dirs.sort_by_key(|path| {
+                std::cmp::Reverse(fs::metadata(path).and_then(|meta| meta.modified()).ok())
+            });
+            for dir in dirs {
+                let origin = dir.join("origin.txt");
+                if let Ok(raw) = fs::read_to_string(&origin) {
+                    let exe = PathBuf::from(raw.trim()).join("terminal64.exe");
+                    if exe.exists() {
+                        let path = exe.display().to_string();
+                        if !found.contains(&path) {
+                            found.push(path);
+                        }
+                    }
+                }
+            }
+        }
+    }
+    for candidate in [
+        r"C:\Program Files\MetaTrader 5\terminal64.exe",
+        r"C:\Program Files\MetaTrader 5 Terminal\terminal64.exe",
+        r"C:\Program Files (x86)\MetaTrader 5\terminal64.exe",
+    ] {
+        let path = PathBuf::from(candidate);
+        if path.exists() {
+            let text = path.display().to_string();
+            if !found.contains(&text) {
+                found.push(text);
+            }
+        }
+    }
+    found
+}
+
+fn mt5_script_path(app: &tauri::AppHandle) -> Option<PathBuf> {
+    if let Ok(dir) = app.path().resource_dir() {
+        for candidate in [
+            dir.join("mt5_bridge.py"),
+            dir.join("resources").join("mt5_bridge.py"),
+        ] {
+            if candidate.exists() {
+                return Some(candidate);
+            }
+        }
+    }
+    let dev = PathBuf::from(env!("CARGO_MANIFEST_DIR"))
+        .join("resources")
+        .join("mt5_bridge.py");
+    dev.exists().then_some(dev)
+}
+
+#[derive(serde::Deserialize)]
+struct Mt5SyncRequest {
+    from: String,
+    to: String,
+    #[serde(default)]
+    terminal: String,
+    #[serde(default)]
+    login: String,
+    #[serde(default)]
+    server: String,
+    #[serde(default)]
+    password: String,
+}
+
+fn is_iso_date(value: &str) -> bool {
+    let bytes = value.as_bytes();
+    bytes.len() == 10
+        && bytes.iter().enumerate().all(|(index, byte)| {
+            if index == 4 || index == 7 {
+                *byte == b'-'
+            } else {
+                byte.is_ascii_digit()
+            }
+        })
+}
+
+fn clip(text: &str) -> String {
+    text.chars().take(400).collect()
+}
+
+#[tauri::command]
+fn mt5_env(app: tauri::AppHandle) -> Mt5Env {
+    let terminals = terminal_candidates();
+    let terminal = terminals.first().cloned();
+    let Some((program, prefix, version)) = detect_python() else {
+        return Mt5Env {
+            python: None,
+            python_version: String::new(),
+            package: false,
+            package_version: String::new(),
+            terminal,
+            terminals,
+            detail: "未找到 Python 3。请安装 python.org 的 Windows 版本后再试。".into(),
+        };
+    };
+    let package = run_python(
+        &program,
+        &prefix,
+        &["-c", "import MetaTrader5 as m; print(m.__version__)"],
+    );
+    let (package_ok, package_version, package_error) = match package {
+        Ok(version) => (true, version, String::new()),
+        Err(err) => (false, String::new(), err),
+    };
+    let mut detail = if package_ok {
+        format!("已找到 {version}")
+    } else {
+        format!(
+            "Python 已就绪，但 MetaTrader5 导入失败：{}",
+            clip(&package_error)
+        )
+    };
+    if mt5_script_path(&app).is_none() {
+        detail.push_str("；但缺少 mt5_bridge.py，请重新安装应用。");
+    }
+    Mt5Env {
+        python: Some(program),
+        python_version: version,
+        package: package_ok,
+        package_version,
+        terminal,
+        terminals,
+        detail,
+    }
+}
+
+#[tauri::command]
+fn mt5_sync(app: tauri::AppHandle, request: Mt5SyncRequest) -> Result<serde_json::Value, String> {
+    if !is_iso_date(&request.from) || !is_iso_date(&request.to) {
+        return Err("日期格式应为 YYYY-MM-DD".into());
+    }
+    let Some((program, prefix, _)) = detect_python() else {
+        return Err("未找到 Python 3，请先安装后重试。".into());
+    };
+    let Some(script) = mt5_script_path(&app) else {
+        return Err("找不到 mt5_bridge.py，安装包可能不完整。".into());
+    };
+    let mut command = std::process::Command::new(program);
+    command
+        .args(prefix)
+        .arg(script)
+        .arg("--from")
+        .arg(&request.from)
+        .arg("--to")
+        .arg(&request.to);
+    for (flag, value) in [
+        ("--terminal", &request.terminal),
+        ("--login", &request.login),
+        ("--server", &request.server),
+        ("--password", &request.password),
+    ] {
+        if !value.trim().is_empty() {
+            command.arg(flag).arg(value);
+        }
+    }
+    hide_console(&mut command);
+    let output = command
+        .output()
+        .map_err(|e| format!("无法启动 Python：{e}"))?;
+    let stdout = String::from_utf8_lossy(&output.stdout).trim().to_string();
+    if let Ok(value) = serde_json::from_str::<serde_json::Value>(&stdout) {
+        return Ok(value);
+    }
+    let stderr = String::from_utf8_lossy(&output.stderr).trim().to_string();
+    Err(format!(
+        "MT5 桥接脚本没有返回有效数据。\nstdout: {}\nstderr: {}",
+        clip(&stdout),
+        clip(&stderr)
+    ))
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -735,7 +983,9 @@ pub fn run() {
             delete_chart,
             create_backup,
             backup_status,
-            restore_backup
+            restore_backup,
+            mt5_env,
+            mt5_sync
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

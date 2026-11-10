@@ -11,6 +11,7 @@ import type {
   Discipline,
   DisciplineItem,
   JournalNote,
+  Mt5Config,
   RiskConfig,
   SetupChecklist,
   Trade,
@@ -84,6 +85,29 @@ function normalizeAccount(raw: unknown): Account | null {
     risk: normalizeRisk(obj.risk),
     createdAt:
       typeof obj.createdAt === 'string' && obj.createdAt ? obj.createdAt : isoToday(),
+    ...(normalizeMt5(obj.mt5) ? { mt5: normalizeMt5(obj.mt5)! } : {}),
+  }
+}
+
+function normalizeMt5(raw: unknown): Mt5Config | null {
+  if (!raw || typeof raw !== 'object') return null
+  const obj = raw as Partial<Mt5Config>
+  const symbolMap: Record<string, string> = {}
+  if (obj.symbolMap && typeof obj.symbolMap === 'object') {
+    for (const [from, to] of Object.entries(obj.symbolMap)) {
+      if (typeof to === 'string' && from.trim() && to.trim()) symbolMap[from] = to.trim()
+    }
+  }
+  return {
+    login: typeof obj.login === 'string' ? obj.login.trim() : '',
+    server: typeof obj.server === 'string' ? obj.server.trim() : '',
+    terminalPath: typeof obj.terminalPath === 'string' ? obj.terminalPath : '',
+    timeOffsetMinutes:
+      typeof obj.timeOffsetMinutes === 'number' && Number.isFinite(obj.timeOffsetMinutes)
+        ? Math.trunc(obj.timeOffsetMinutes)
+        : -new Date().getTimezoneOffset(),
+    symbolMap,
+    lastSyncAt: typeof obj.lastSyncAt === 'string' ? obj.lastSyncAt : '',
   }
 }
 
@@ -319,6 +343,9 @@ function normalizeCashFlows(raw: unknown, accountIds: Set<string>): CashFlow[] {
       kind,
       amount: Math.round(obj.amount * 100) / 100,
       note: typeof obj.note === 'string' ? obj.note : '',
+      ...(typeof obj.externalId === 'string' && obj.externalId.trim()
+        ? { externalId: obj.externalId }
+        : {}),
     })
   }
   return out

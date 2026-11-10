@@ -51,7 +51,7 @@ interface StoreValue {
   setActiveAccount: (id: string) => void
   addAccount: (input: NewAccountInput) => Account
   updateAccount: (
-    patch: Partial<Pick<Account, 'name' | 'startingEquity' | 'feePerContract' | 'risk'>>,
+    patch: Partial<Pick<Account, 'name' | 'startingEquity' | 'feePerContract' | 'risk' | 'mt5'>>,
   ) => void
   deleteAccount: (id: string) => void
   /** 全应用共享的合约 / 时段 / 形态字典。 */
@@ -84,6 +84,12 @@ interface StoreValue {
   saveCashFlow: (flow: CashFlow) => void
   deleteCashFlow: (id: string) => void
   importTrades: (trades: Trade[]) => void
+  /** MT5 增量同步：按 externalId 更新已有交易，保留用户填写的复盘字段。 */
+  syncMt5: (
+    trades: Trade[],
+    flows: CashFlow[],
+    accountId?: string,
+  ) => { added: number; updated: number; flowsAdded: number }
   replaceData: (data: AppData) => void
   loadDemo: () => void
   clearAll: () => void
@@ -94,6 +100,10 @@ interface StoreValue {
 }
 
 const StoreContext = createContext<StoreValue | null>(null)
+
+function tradeIdentity(trade: Trade): string {
+  return `${trade.date}|${trade.entryTime}|${trade.symbol}|${trade.entry}|${trade.qty}|${trade.side}`
+}
 
 function purgeCharts(trades: Trade[]): void {
   for (const trade of trades) {
@@ -745,6 +755,84 @@ export function StoreProvider({ children }: { children: ReactNode }) {
     [mutate],
   )
 
+  const syncMt5 = useCallback<StoreValue['syncMt5']>(
+    (incoming, incomingFlows, accountId) => {
+      const current = latest.current
+      const targetId = accountId ?? current.activeAccountId
+      const byExternal = new Map<string, Trade>()
+      const byIdentity = new Map<string, Trade>()
+      for (const trade of current.trades) {
+        if (trade.accountId !== targetId) continue
+        if (trade.externalId) byExternal.set(trade.externalId, trade)
+        byIdentity.set(tradeIdentity(trade), trade)
+      }
+
+      const nextTrades = [...current.trades]
+      let added = 0
+      let updated = 0
+      for (const raw of incoming) {
+        const trade: Trade = { ...raw, accountId: targetId, charts: raw.charts ?? [] }
+        const externalMatch = trade.externalId
+          ? byExternal.get(trade.externalId)
+          : undefined
+        const identityMatch = byIdentity.get(tradeIdentity(trade))
+        // 只有「原来没有外部编号」的手工记录才按内容指纹合并，
+        // 避免同一分钟、同价同量的两笔不同 MT5 持仓被错误地并成一笔。
+        const match =
+          externalMatch ?? (identityMatch && !identityMatch.externalId ? identityMatch : undefined)
+        if (!match) {
+          nextTrades.unshift(trade)
+          added += 1
+          if (trade.externalId) byExternal.set(trade.externalId, trade)
+          byIdentity.set(tradeIdentity(trade), trade)
+          continue
+        }
+        const merged: Trade = {
+          ...trade,
+          id: match.id,
+          accountId: targetId,
+          setup: match.setup && match.setup !== '未分类' ? match.setup : trade.setup,
+          session: match.session || trade.session,
+          note: match.note,
+          grade: match.grade,
+          discipline: match.discipline,
+          mistakes: match.mistakes,
+          maeR: match.maeR,
+          mfeR: match.mfeR,
+          charts: match.charts,
+          stop: trade.stop > 0 ? trade.stop : match.stop,
+        }
+        const index = nextTrades.findIndex((item) => item.id === match.id)
+        if (index >= 0) nextTrades[index] = merged
+        updated += 1
+        if (merged.externalId) byExternal.set(merged.externalId, merged)
+        byIdentity.set(tradeIdentity(merged), merged)
+      }
+
+      const flowKeys = new Set(
+        current.cashFlows
+          .filter((flow) => flow.accountId === targetId && flow.externalId)
+          .map((flow) => flow.externalId!),
+      )
+      const freshFlows: CashFlow[] = []
+      for (const flow of incomingFlows) {
+        if (flow.externalId && flowKeys.has(flow.externalId)) continue
+        if (flow.externalId) flowKeys.add(flow.externalId)
+        freshFlows.push({ ...flow, accountId: targetId })
+      }
+
+      if (added || updated || freshFlows.length) {
+        mutate((prev) => ({
+          ...prev,
+          trades: nextTrades,
+          cashFlows: freshFlows.length ? [...freshFlows, ...prev.cashFlows] : prev.cashFlows,
+        }))
+      }
+      return { added, updated, flowsAdded: freshFlows.length }
+    },
+    [mutate],
+  )
+
   const replaceData = useCallback(
     (next: AppData) => {
       mutate(() => next)
@@ -881,6 +969,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveCashFlow,
       deleteCashFlow,
       importTrades,
+      syncMt5,
       replaceData,
       loadDemo,
       clearAll,
@@ -934,6 +1023,7 @@ export function StoreProvider({ children }: { children: ReactNode }) {
       saveCashFlow,
       deleteCashFlow,
       importTrades,
+      syncMt5,
       replaceData,
       loadDemo,
       clearAll,
