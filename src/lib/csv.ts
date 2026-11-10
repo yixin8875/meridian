@@ -197,7 +197,7 @@ export function importTradesCsv(
     }
 
     const side = parseSide(get(row, 'side'))
-    const qty = Math.max(1, Math.round(num(get(row, 'qty'), 1)))
+    const qty = Math.max(0.01, Number(num(get(row, 'qty'), 1).toFixed(4)))
     const stop = num(get(row, 'stop'), entry)
     const target = num(get(row, 'target'), 0)
     const statusRaw = get(row, 'status').toLowerCase()

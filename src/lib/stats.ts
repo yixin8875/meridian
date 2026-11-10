@@ -257,11 +257,13 @@ export function suggestedQty(
   entry: number,
   stop: number,
   pointValue: number,
+  decimals = 0,
 ): number {
   const riskPerUnit = Math.abs(entry - stop) * pointValue
   const budget = equity * (riskPerTradePct / 100)
   if (riskPerUnit <= 0 || budget <= 0) return 0
-  return Math.max(0, Math.floor(budget / riskPerUnit))
+  const factor = 10 ** decimals
+  return Math.max(0, Math.floor((budget / riskPerUnit) * factor) / factor)
 }
 
 export function withMean(points: EquityPoint[], days = 30): EquityPointView[] {

@@ -107,3 +107,11 @@ export function pointValueOf(symbol: string, contracts?: ContractConfig[]): numb
 export function tickOf(symbol: string): number {
   return CONTRACTS[symbol]?.tick ?? 0.01
 }
+
+/**
+ * 手数精度：内置期货合约按整手，自定义合约（如 CFD）允许两位小数。
+ * 仅用于表单步进与建议手数取整，不改变已记录的手数。
+ */
+export function qtyDecimalsOf(symbol: string): number {
+  return CONTRACTS[symbol] ? 0 : 2
+}

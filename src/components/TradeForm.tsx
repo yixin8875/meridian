@@ -9,7 +9,7 @@ import type {
   TradeStatus,
   TradingConfig,
 } from '../types'
-import { pointValueOf } from '../data/contracts'
+import { pointValueOf, qtyDecimalsOf } from '../data/contracts'
 import { fmtMoney, fmtR, fmtSignedMoney, todayISO, uid } from '../lib/format'
 import { currentEquity, riskStatus, suggestedQty } from '../lib/stats'
 import { useApp } from '../store'
@@ -231,7 +231,8 @@ export function TradeForm({
 
   const calc = useMemo(() => {
     const pointValue = pointValueOf(form.symbol, config.contracts)
-    const qty = Math.max(0, Math.round(num(form.qty)))
+    const qtyDecimals = qtyDecimalsOf(form.symbol)
+    const qty = Math.max(0, num(form.qty))
     const entry = num(form.entry)
     const stop = num(form.stop)
     const out = form.status === 'open' ? num(form.current) : num(form.exit)
@@ -252,10 +253,12 @@ export function TradeForm({
       entry,
       stop,
       pointValue,
+      qtyDecimals,
     )
     return {
       pointValue,
       qty,
+      qtyDecimals,
       gross,
       fees,
       pnl,
@@ -380,7 +383,9 @@ export function TradeForm({
                 建议 {calc.suggested} 手
               </button>
             ) : calc.risk > 0 ? (
-              <span className="text-warn">预算不足 1 手</span>
+              <span className="text-warn">
+                {calc.qtyDecimals > 0 ? '预算不足 0.01 手' : '预算不足 1 手'}
+              </span>
             ) : null}
           </div>
           <div className="flex items-center gap-2">
@@ -531,8 +536,8 @@ export function TradeForm({
             <input
               type="number"
               name="qty"
-              min={1}
-              step={1}
+              min={calc.qtyDecimals > 0 ? 0.01 : 1}
+              step={calc.qtyDecimals > 0 ? 0.01 : 1}
               className="input num"
               value={form.qty}
               onChange={(event) => set('qty', event.target.value)}
