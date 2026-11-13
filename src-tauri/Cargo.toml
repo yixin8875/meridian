@@ -1,6 +1,6 @@
 [package]
 name = "meridian"
-version = "0.5.1"
+version = "0.6.0"
 description = "MERIDIAN — 本地优先的日内期货复盘台"
 authors = ["MERIDIAN"]
 license = "MIT"

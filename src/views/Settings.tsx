@@ -1372,7 +1372,7 @@ export function Settings() {
       ) : null}
 
       <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-faint">
-        <span>MERIDIAN 0.5.1 · 本地优先交易复盘</span>
+        <span>MERIDIAN 0.6.0 · 本地优先交易复盘</span>
         <span>数据仅保存在本机，不上传任何服务器。</span>
       </div>
 
