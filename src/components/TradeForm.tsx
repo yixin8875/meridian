@@ -349,7 +349,7 @@ export function TradeForm({
       width={680}
       footer={
         <>
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-[11px]">
+          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 text-xs">
             <span className="text-faint">净盈亏</span>
             <span
               className={`num font-medium ${
@@ -372,7 +372,7 @@ export function TradeForm({
                 calc.riskPct > account.risk.riskPerTradePct ? 'text-loss' : 'text-ink-2'
               }`}
             >
-              {fmtMoney(calc.risk, false)} · {calc.riskPct.toFixed(2)}%
+              {fmtMoney(calc.risk, true)} · {calc.riskPct.toFixed(2)}%
             </span>
             {calc.suggested > 0 ? (
               <button
@@ -393,7 +393,7 @@ export function TradeForm({
               取消
             </button>
             <button className="btn btn-primary" onClick={submit} disabled={chartBusy}>
-              <Check size={14} />
+              <Check size={16} strokeWidth={1.5} />
               {chartBusy ? '正在处理图片…' : '保存交易'}
             </button>
           </div>
@@ -402,20 +402,20 @@ export function TradeForm({
     >
       <div className="space-y-4">
         {error ? (
-          <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+          <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
             {error}
           </div>
         ) : null}
 
         {!trade && riskWarnings.length ? (
-          <div className="flex items-start gap-2 rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11px] leading-relaxed text-loss">
-            <AlertTriangle size={14} className="mt-0.5 shrink-0" />
+          <div className="flex items-start gap-2 rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs leading-relaxed text-loss">
+            <AlertTriangle size={16} strokeWidth={1.5} className="mt-0.5 shrink-0" />
             <span>{riskWarnings.join('；')}。建议停止开新仓，先复盘。</span>
           </div>
         ) : null}
 
         {calc.riskPct > account.risk.riskPerTradePct ? (
-          <p className="text-[10px] text-loss">
+          <p className="text-xs text-loss">
             本笔计划风险占权益 {calc.riskPct.toFixed(2)}%，超过账户单笔上限{' '}
             {account.risk.riskPerTradePct}%。
           </p>
@@ -598,9 +598,9 @@ export function TradeForm({
           </label>
           <div>
             <span className="field-label">评级（按 R 自动）</span>
-            <div className="flex h-8 items-center gap-1.5 rounded-md border border-line bg-list px-2.5 text-[12px] text-ink-2">
+            <div className="flex h-8 items-center gap-1.5 rounded-md border border-line bg-list px-2.5 text-xs text-ink-2">
               <span className="font-medium text-ink">{gradeOf(calc.r)} 级</span>
-              <span className="text-[10px] text-faint">
+              <span className="text-xs text-faint">
                 {gradeOf(calc.r) === 'A'
                   ? '≥ 1.5R'
                   : gradeOf(calc.r) === 'B'
@@ -610,11 +610,11 @@ export function TradeForm({
             </div>
           </div>
           <div className="col-span-2 rounded-md border border-line bg-list px-3 py-2">
-            <div className="flex items-center justify-between text-[10.5px] text-faint">
+            <div className="flex items-center justify-between text-xs text-faint">
               <span>合约点值</span>
-              <span className="num text-ink-2">{fmtMoney(calc.pointValue, false)} / 点</span>
+              <span className="num text-ink-2">{fmtMoney(calc.pointValue, true)} / 点</span>
             </div>
-            <div className="mt-1 flex items-center justify-between text-[10.5px] text-faint">
+            <div className="mt-1 flex items-center justify-between text-xs text-faint">
               <span>毛盈亏 / 手续费</span>
               <span className="num text-ink-2">
                 {fmtSignedMoney(calc.gross, true)} / {fmtMoney(calc.fees)}
@@ -651,13 +651,13 @@ export function TradeForm({
             />
           </label>
           <div className="col-span-2 rounded-md border border-line bg-list px-3 py-2">
-            <div className="flex items-center justify-between text-[10.5px] text-faint">
+            <div className="flex items-center justify-between text-xs text-faint">
               <span>MFE 捕获率</span>
               <span className="num text-ink-2">
                 {calc.mfeR > 0 ? `${calc.capture.toFixed(0)}%` : '—'}
               </span>
             </div>
-            <p className="mt-1 text-[9.5px] leading-relaxed text-faint">
+            <p className="mt-1 text-xs leading-relaxed text-faint">
               记录持仓期间的最差 / 最好浮动，用来判断止损位置与离场是否过早。
             </p>
           </div>
@@ -679,15 +679,15 @@ export function TradeForm({
                       [item.id]: !active,
                     })
                   }
-                  className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-[11.5px] transition-colors ${
+                  className={`flex items-center gap-2 rounded-md border px-3 py-2 text-left text-xs transition-colors ${
                     active
                       ? 'border-accent/35 bg-accent-soft text-ink'
-                      : 'border-line bg-white text-muted hover:bg-hover'
+                      : 'border-line bg-paper text-muted hover:bg-hover'
                   }`}
                 >
                   <span
                     className={`flex h-3.5 w-3.5 items-center justify-center rounded-[3px] border ${
-                      active ? 'border-accent bg-accent text-white' : 'border-line-2 bg-white'
+                      active ? 'border-accent bg-accent text-paper' : 'border-line-2 bg-paper'
                     }`}
                   >
                     {active ? <Check size={9} strokeWidth={3} /> : null}
@@ -698,14 +698,14 @@ export function TradeForm({
             })}
           </div>
           ) : (
-            <p className="mt-1 text-[10px] text-faint">还没有纪律项，可在设置中维护。</p>
+            <p className="mt-1 text-xs text-faint">还没有纪律项，可在设置中维护。</p>
           )}
         </div>
 
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="field-label">错误标签</span>
-            <span className="text-[10px] text-faint">可选 · 用来区分“结果不好”和“过程做错”</span>
+            <span className="text-xs text-faint">可选 · 用来区分“结果不好”和“过程做错”</span>
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {config.mistakeTags.map((tag) => {
@@ -722,10 +722,10 @@ export function TradeForm({
                         : [...form.mistakes, tag],
                     )
                   }
-                  className={`inline-flex h-7 items-center rounded-full border px-2.5 text-[11px] transition-colors ${
+                  className={`inline-flex h-7 items-center rounded-md border px-2.5 text-xs transition-colors ${
                     active
                       ? 'border-loss/30 bg-loss-soft text-loss'
-                      : 'border-line bg-white text-muted hover:bg-hover'
+                      : 'border-line bg-paper text-muted hover:bg-hover'
                   }`}
                 >
                   {tag}
@@ -733,11 +733,11 @@ export function TradeForm({
               )
             })}
             {!config.mistakeTags.length ? (
-              <span className="text-[10px] text-faint">还没有错误标签，可在设置中维护。</span>
+              <span className="text-xs text-faint">还没有错误标签，可在设置中维护。</span>
             ) : null}
           </div>
           {form.mistakes.length ? (
-            <p className="mt-1.5 text-[10px] text-faint">
+            <p className="mt-1.5 text-xs text-faint">
               已标记 {form.mistakes.length} 项；保存后可在镜像分析查看错误成本。
             </p>
           ) : null}
@@ -755,7 +755,7 @@ export function TradeForm({
           <span className="field-label">复盘备注</span>
           <textarea
             name="note"
-            className="textarea min-h-[92px]"
+            className="textarea min-h-24"
             placeholder="进场理由、执行偏差、下次要改的一件事…"
             value={form.note}
             onChange={(event) => set('note', event.target.value)}

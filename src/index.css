@@ -3,28 +3,32 @@
 @theme {
   --font-sans: "Segoe UI Variable Text", "Segoe UI", -apple-system, BlinkMacSystemFont,
     "PingFang SC", "Microsoft YaHei UI", "Microsoft YaHei", sans-serif;
-  --font-mono: "Cascadia Mono", "SFMono-Regular", Consolas, monospace;
+  --font-mono: "Cascadia Mono", "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 
-  --color-canvas: #f5f4f1;
-  --color-sidebar: #f7f6f3;
-  --color-list: #fcfbf9;
-  --color-ink: #1d1d1f;
-  --color-ink-2: #45454a;
-  --color-muted: #6e6e73;
-  --color-faint: #98989e;
-  --color-line: #e7e5e0;
-  --color-line-2: #d8d6d0;
-  --color-hover: #efeeea;
-  --color-selected: #eae9e5;
-  --color-accent: #0b6cf0;
-  --color-accent-hover: #075dcc;
-  --color-accent-soft: #eaf2fe;
-  --color-gain: #12805c;
-  --color-gain-soft: #e9f6f0;
-  --color-loss: #c7443e;
-  --color-loss-soft: #fcefee;
-  --color-warn: #a9691a;
-  --color-warn-soft: #fbf3e6;
+  --color-canvas: #f3f0e9;
+  --color-sidebar: #ece7dd;
+  --color-list: #f8f5ef;
+  --color-paper: #fffdf8;
+  --color-ink: #201c17;
+  --color-ink-2: #4a4238;
+  --color-ink-hover: #373027;
+  --color-muted: #665d50;
+  --color-faint: #7d7263;
+  --color-line: #e4ded3;
+  --color-line-2: #d3cabb;
+  --color-hover: #efe9de;
+  --color-selected: #e8e0d2;
+  --color-accent: #b45309;
+  --color-accent-hover: #92400e;
+  --color-accent-soft: #f6e8d5;
+  --color-gain: #1f7a55;
+  --color-gain-soft: #e9f3ed;
+  --color-loss: #b23f37;
+  --color-loss-soft: #f8eae8;
+  --color-warn: #96631c;
+  --color-warn-soft: #f7eeda;
+
+  --ease-out: cubic-bezier(0.22, 1, 0.36, 1);
 }
 
 @layer base {
@@ -36,7 +40,8 @@
 
   body {
     @apply bg-canvas font-sans text-ink antialiased;
-    font-size: 13px;
+    font-size: 14px;
+    line-height: 1.5;
     text-rendering: optimizeLegibility;
   }
 
@@ -46,16 +51,16 @@
 
   :focus-visible {
     outline: 2px solid color-mix(in srgb, var(--color-accent) 55%, transparent);
-    outline-offset: 1px;
+    outline-offset: 2px;
   }
 
   ::selection {
-    background: color-mix(in srgb, var(--color-accent) 18%, transparent);
+    background: color-mix(in srgb, var(--color-accent) 20%, transparent);
   }
 
   * {
     scrollbar-width: thin;
-    scrollbar-color: #d2cfc9 transparent;
+    scrollbar-color: #cfc5b5 transparent;
   }
 
   ::-webkit-scrollbar {
@@ -64,7 +69,7 @@
   }
 
   ::-webkit-scrollbar-thumb {
-    background: #d2cfc9;
+    background: #cfc5b5;
     border: 3px solid transparent;
     background-clip: padding-box;
     border-radius: 8px;
@@ -77,15 +82,19 @@
 
 @layer components {
   .btn {
-    @apply inline-flex h-8 select-none items-center justify-center gap-1.5 whitespace-nowrap rounded-md px-3 text-[12.5px] font-medium transition-colors disabled:pointer-events-none disabled:opacity-40;
+    @apply inline-flex h-9 select-none items-center justify-center gap-2 whitespace-nowrap rounded-lg px-3.5 text-sm font-medium transition-colors disabled:pointer-events-none disabled:opacity-40;
+  }
+
+  .btn:active:not(:disabled) {
+    transform: scale(0.98);
   }
 
   .btn-primary {
-    @apply bg-accent text-white shadow-[0_1px_2px_rgba(16,24,40,0.14)] hover:bg-accent-hover;
+    @apply bg-ink text-paper shadow-[0_1px_2px_rgba(32,28,23,0.16)] hover:bg-ink-hover;
   }
 
   .btn-secondary {
-    @apply border border-line bg-white text-ink hover:bg-hover;
+    @apply border border-line bg-paper text-ink hover:bg-hover;
   }
 
   .btn-ghost {
@@ -93,43 +102,54 @@
   }
 
   .btn-danger {
-    @apply bg-loss text-white hover:brightness-95;
+    @apply bg-loss text-paper hover:brightness-95;
   }
 
   .icon-btn {
-    @apply inline-flex h-8 w-8 shrink-0 items-center justify-center rounded-md text-muted transition-colors hover:bg-hover hover:text-ink;
+    @apply inline-flex h-9 w-9 shrink-0 items-center justify-center rounded-lg text-muted transition-colors hover:bg-hover hover:text-ink;
   }
 
   .input {
-    @apply h-8 w-full rounded-md border border-line bg-white px-2.5 text-[12.5px] text-ink outline-none transition placeholder:text-faint focus:border-accent/60 focus:ring-2 focus:ring-accent/15;
+    @apply h-9 w-full rounded-lg border border-line bg-paper px-3 text-sm text-ink outline-none transition placeholder:text-faint focus:border-accent/60 focus:ring-2 focus:ring-accent/15;
   }
 
   .textarea {
-    @apply w-full resize-y rounded-md border border-line bg-white px-2.5 py-2 text-[12.5px] leading-relaxed text-ink outline-none transition placeholder:text-faint focus:border-accent/60 focus:ring-2 focus:ring-accent/15;
+    @apply w-full resize-y rounded-lg border border-line bg-paper px-3 py-2 text-sm leading-relaxed text-ink outline-none transition placeholder:text-faint focus:border-accent/60 focus:ring-2 focus:ring-accent/15;
   }
 
   .field-label {
-    @apply mb-1.5 block text-[11px] font-medium text-muted;
+    @apply mb-1.5 block text-xs font-medium text-muted;
   }
 
   .panel {
-    @apply rounded-xl border border-line bg-white;
+    @apply rounded-xl border border-line bg-paper;
   }
 
   .section-label {
-    @apply text-[10.5px] font-semibold uppercase tracking-[0.08em] text-faint;
+    @apply text-xs text-muted;
   }
 
   .nav-row {
-    @apply flex h-8 w-full items-center gap-2.5 rounded-md px-2 text-left text-[12.5px] text-ink-2 transition-colors hover:bg-hover;
+    @apply relative flex h-9 w-full items-center gap-2.5 rounded-md px-2 text-left text-sm text-ink-2 transition-colors hover:bg-hover;
   }
 
   .nav-row-active {
     @apply bg-selected font-medium text-ink;
   }
 
+  .nav-row-active::before {
+    content: "";
+    position: absolute;
+    left: 0;
+    top: 10px;
+    bottom: 10px;
+    width: 2px;
+    border-radius: 999px;
+    background: var(--color-accent);
+  }
+
   .list-row {
-    @apply flex w-full items-center gap-2.5 rounded-md px-2 py-2 text-left transition-colors hover:bg-hover;
+    @apply flex w-full items-center gap-3 rounded-md px-2 py-2.5 text-left transition-colors hover:bg-hover;
   }
 
   .list-row-active {
@@ -137,23 +157,23 @@
   }
 
   .kbd {
-    @apply inline-flex h-[18px] min-w-[18px] items-center justify-center rounded border border-line bg-white px-1 font-mono text-[9px] text-faint;
+    @apply inline-flex h-5 min-w-5 items-center justify-center rounded border border-line bg-paper px-1 font-mono text-xs text-faint;
   }
 
   .chip {
-    @apply inline-flex h-6 items-center gap-1 whitespace-nowrap rounded-full border border-line bg-white px-2.5 text-[11px] text-muted transition-colors hover:border-line-2 hover:text-ink;
+    @apply inline-flex h-7 items-center gap-1.5 whitespace-nowrap rounded-md border border-line bg-paper px-2.5 text-xs text-muted transition-colors hover:border-line-2 hover:text-ink;
   }
 
   .chip-active {
-    @apply border-ink bg-ink text-white hover:border-ink hover:text-white;
+    @apply border-ink bg-ink text-paper hover:border-ink hover:text-paper;
   }
 
   .seg {
-    @apply inline-flex items-center rounded-md border border-line bg-canvas p-0.5;
+    @apply inline-flex items-center rounded-lg border border-line bg-canvas p-0.5;
   }
 
   .seg button {
-    @apply h-6 rounded px-2 text-[11px] text-muted transition-colors;
+    @apply h-7 rounded-md px-2.5 text-xs text-muted transition-colors;
   }
 
   .seg button:hover {
@@ -161,7 +181,7 @@
   }
 
   .seg button[data-active="true"] {
-    @apply bg-white text-ink shadow-[0_1px_2px_rgba(16,24,40,0.12)];
+    @apply bg-paper text-ink shadow-[0_1px_2px_rgba(32,28,23,0.08)];
   }
 
   .divider {
@@ -169,18 +189,19 @@
   }
 
   .num {
+    font-family: var(--font-mono);
     font-variant-numeric: tabular-nums;
   }
 
   .fade-in {
-    animation: fade-in 0.18s ease-out both;
+    animation: fade-in 0.24s var(--ease-out) both;
   }
 }
 
 @keyframes fade-in {
   from {
     opacity: 0;
-    transform: translateY(2px);
+    transform: translateY(4px);
   }
   to {
     opacity: 1;

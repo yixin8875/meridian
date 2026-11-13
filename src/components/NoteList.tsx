@@ -7,15 +7,8 @@ import { EmptyState } from './primitives'
 const KIND_STYLE: Record<NoteKind, string> = {
   盘前: 'bg-accent-soft text-accent',
   盘中: 'bg-warn-soft text-warn',
-  盘后: 'bg-[#efe9fd] text-[#6446bc]',
+  盘后: 'bg-canvas text-muted',
   周总结: 'bg-gain-soft text-gain',
-}
-
-const MOOD_DOT: Record<string, string> = {
-  平静: '#0b6cf0',
-  专注: '#12805c',
-  焦躁: '#c7443e',
-  疲惫: '#a9691a',
 }
 
 export function NoteList({
@@ -54,26 +47,26 @@ export function NoteList({
 
   return (
     <>
-      <div className="flex h-[54px] shrink-0 items-center justify-between border-b border-line px-3">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
         <div>
-          <h1 className="text-[13px] font-semibold text-ink">复盘笔记</h1>
-          <p className="mt-0.5 text-[10.5px] text-muted">
+          <h1 className="text-base font-medium text-ink">复盘笔记</h1>
+          <p className="mt-1 text-xs text-muted">
             {groups.total} 篇{query ? ` · 搜索“${query}”` : ''}
           </p>
         </div>
         <button className="icon-btn" onClick={onNew} aria-label="新建笔记">
-          <Plus size={16} />
+          <Plus size={16} strokeWidth={1.5} />
         </button>
       </div>
 
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         {groups.entries.map(([date, items]) => (
           <section key={date}>
-            <div className="sticky top-0 z-10 flex items-center justify-between bg-list/95 px-2 pb-1 pt-3 text-[10.5px] font-medium text-faint backdrop-blur">
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-list/95 px-2 pb-1.5 pt-4 text-xs text-muted backdrop-blur-sm">
               <span>
                 {fmtDateCN(date)} · {weekdayCN(date)}
               </span>
-              <span className="num">{items.length} 篇</span>
+              <span className="font-mono">{items.length} 篇</span>
             </div>
             <div className="space-y-0.5">
               {items.map((note) => (
@@ -83,17 +76,13 @@ export function NoteList({
                   onClick={() => onSelect(note.id)}
                 >
                   <span
-                    className={`mt-0.5 inline-flex h-5 shrink-0 items-center rounded px-1.5 text-[10px] font-medium ${KIND_STYLE[note.kind]}`}
+                    className={`mt-0.5 inline-flex h-6 shrink-0 items-center rounded-md px-2 text-xs font-medium ${KIND_STYLE[note.kind]}`}
                   >
                     {note.kind}
                   </span>
                   <div className="min-w-0 flex-1">
-                    <div className="truncate text-[12.5px] font-medium text-ink">{note.title}</div>
-                    <div className="mt-0.5 flex items-center gap-1.5 truncate text-[10.5px] text-muted">
-                      <span
-                        className="h-1.5 w-1.5 shrink-0 rounded-full"
-                        style={{ backgroundColor: MOOD_DOT[note.mood] ?? '#98989e' }}
-                      />
+                    <div className="truncate text-sm font-medium text-ink">{note.title}</div>
+                    <div className="mt-1 flex items-center gap-1.5 truncate text-xs text-muted">
                       <span className="shrink-0">{note.mood}</span>
                       {note.tags[0] ? (
                         <>

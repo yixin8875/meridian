@@ -179,17 +179,17 @@ export function DayReviewDialog({
                   className="btn btn-ghost text-loss"
                   onClick={() => setConfirmDelete(true)}
                 >
-                  <Trash2 size={13} />
+                  <Trash2 size={16} strokeWidth={1.5} />
                   删除复盘
                 </button>
               )
             ) : null}
             <button className="btn btn-secondary" onClick={onClose}>
-              <X size={13} />
+              <X size={16} strokeWidth={1.5} />
               取消
             </button>
             <button className="btn btn-primary" onClick={save}>
-              <Check size={13} />
+              <Check size={16} strokeWidth={1.5} />
               保存复盘
             </button>
           </div>
@@ -198,33 +198,33 @@ export function DayReviewDialog({
     >
       <div className="space-y-4">
         {error ? (
-          <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+          <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
             {error}
           </div>
         ) : null}
 
         <div className="grid grid-cols-4 divide-x divide-line rounded-lg border border-line bg-list/70">
           <div className="px-3 py-2.5">
-            <div className="text-[9.5px] text-faint">当日净盈亏</div>
-            <div className="num mt-0.5 text-[14px] font-semibold text-ink">
-              {dayStats.count ? fmtSignedMoney(dayStats.netPnl, true) : '—'}
+            <div className="text-xs text-faint">当日净盈亏</div>
+            <div className="num mt-0.5 text-sm font-medium text-ink">
+              {dayStats.count ? fmtSignedMoney(dayStats.netPnl, true, account.currency) : '—'}
             </div>
           </div>
           <div className="px-3 py-2.5">
-            <div className="text-[9.5px] text-faint">交易笔数</div>
-            <div className="num mt-0.5 text-[14px] font-medium text-ink">
+            <div className="text-xs text-faint">交易笔数</div>
+            <div className="num mt-0.5 text-sm font-medium text-ink">
               {dayTrades.length}
             </div>
           </div>
           <div className="px-3 py-2.5">
-            <div className="text-[9.5px] text-faint">本周净盈亏</div>
-            <div className="num mt-0.5 text-[14px] font-medium text-ink">
-              {week.stats.count ? fmtSignedMoney(week.stats.netPnl, true) : '—'}
+            <div className="text-xs text-faint">本周净盈亏</div>
+            <div className="num mt-0.5 text-sm font-medium text-ink">
+              {week.stats.count ? fmtSignedMoney(week.stats.netPnl, true, account.currency) : '—'}
             </div>
           </div>
           <div className="px-3 py-2.5">
-            <div className="text-[9.5px] text-faint">本周错误标签</div>
-            <div className="num mt-0.5 text-[14px] font-medium text-ink">
+            <div className="text-xs text-faint">本周错误标签</div>
+            <div className="num mt-0.5 text-sm font-medium text-ink">
               {week.mistakes.tagged ? `${week.mistakes.tagged} 笔` : '0 笔'}
             </div>
           </div>
@@ -234,7 +234,7 @@ export function DayReviewDialog({
           <label className="block">
             <span className="field-label">市场背景</span>
             <textarea
-              className="textarea min-h-[92px]"
+              className="textarea min-h-24"
               placeholder="趋势、波动、关键数据、开盘结构…"
               value={form.marketContext}
               onChange={(event) => set('marketContext', event.target.value)}
@@ -243,7 +243,7 @@ export function DayReviewDialog({
           <label className="block">
             <span className="field-label">交易计划</span>
             <textarea
-              className="textarea min-h-[92px]"
+              className="textarea min-h-24"
               placeholder="今天只做哪些形态？风险上限是什么？"
               value={form.plan}
               onChange={(event) => set('plan', event.target.value)}
@@ -254,9 +254,9 @@ export function DayReviewDialog({
         <div>
           <div className="flex items-baseline justify-between gap-2">
             <span className="field-label">执行分</span>
-            <span className="num text-[13px] font-semibold text-accent">
+            <span className="num text-sm font-medium text-accent">
               {form.executionScore}
-              <span className="text-[10px] font-normal text-faint"> / 100</span>
+              <span className="text-xs font-normal text-faint"> / 100</span>
             </span>
           </div>
           <input
@@ -264,11 +264,11 @@ export function DayReviewDialog({
             min={0}
             max={100}
             step={5}
-            className="mt-1 w-full accent-[#0b6cf0]"
+            className="mt-1 w-full" style={{ accentColor: "var(--color-accent)" }}
             value={form.executionScore}
             onChange={(event) => set('executionScore', Number(event.target.value))}
           />
-          <div className="flex justify-between text-[9.5px] text-faint">
+          <div className="flex justify-between text-xs text-faint">
             <span>情绪化 / 无计划</span>
             <span>按计划执行</span>
           </div>
@@ -277,7 +277,7 @@ export function DayReviewDialog({
         <div>
           <div className="flex flex-wrap items-baseline justify-between gap-2">
             <span className="field-label">规则违背</span>
-            <span className="text-[10px] text-faint">点击标记当天出现的错误</span>
+            <span className="text-xs text-faint">点击标记当天出现的错误</span>
           </div>
           <div className="mt-1 flex flex-wrap gap-1.5">
             {config.mistakeTags.map((tag) => {
@@ -287,10 +287,10 @@ export function DayReviewDialog({
                   type="button"
                   key={tag}
                   onClick={() => toggleViolation(tag)}
-                  className={`inline-flex h-7 items-center rounded-full border px-2.5 text-[11px] transition-colors ${
+                  className={`inline-flex h-7 items-center rounded-md border px-2.5 text-xs transition-colors ${
                     active
                       ? 'border-loss/30 bg-loss-soft text-loss'
-                      : 'border-line bg-white text-muted hover:bg-hover'
+                      : 'border-line bg-paper text-muted hover:bg-hover'
                   }`}
                 >
                   {tag}
@@ -298,7 +298,7 @@ export function DayReviewDialog({
               )
             })}
             {!config.mistakeTags.length ? (
-              <span className="text-[10px] text-faint">还没有错误标签，可在设置中维护。</span>
+              <span className="text-xs text-faint">还没有错误标签，可在设置中维护。</span>
             ) : null}
           </div>
         </div>
@@ -307,7 +307,7 @@ export function DayReviewDialog({
           <div>
             <div className="flex flex-wrap items-baseline justify-between gap-2">
               <span className="field-label">盘前检查清单</span>
-              <span className="text-[10px] text-faint">按形态勾选当天开盘前的检查项</span>
+              <span className="text-xs text-faint">按形态勾选当天开盘前的检查项</span>
             </div>
             <div className="mt-1 space-y-2">
               {config.checklists.map((checklist) => {
@@ -319,10 +319,10 @@ export function DayReviewDialog({
                     className="rounded-lg border border-line bg-list/70 px-3 py-2.5"
                   >
                     <div className="flex items-center justify-between gap-2">
-                      <span className="text-[11px] font-medium text-ink">{checklist.setup}</span>
+                      <span className="text-xs font-medium text-ink">{checklist.setup}</span>
                       <span
-                        className={`num text-[10px] ${
-                          done === checklist.items.length ? 'text-gain' : 'text-faint'
+                        className={`num text-xs ${
+                          done === checklist.items.length ? "text-ink" : "text-faint"
                         }`}
                       >
                         {done} / {checklist.items.length}
@@ -336,20 +336,20 @@ export function DayReviewDialog({
                             type="button"
                             key={item.id}
                             onClick={() => toggleCheck(checklist.id, item.id)}
-                            className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-[10.5px] transition-colors ${
+                            className={`flex items-center gap-2 rounded-md border px-2.5 py-1.5 text-left text-xs transition-colors ${
                               active
-                                ? 'border-gain/25 bg-gain-soft/60 text-ink'
-                                : 'border-line bg-white text-muted hover:bg-hover'
+                                ? 'border-accent/30 bg-accent-soft/60 text-ink'
+                                : 'border-line bg-paper text-muted hover:bg-hover'
                             }`}
                           >
                             <span
-                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-[3px] border ${
+                              className={`flex h-3.5 w-3.5 shrink-0 items-center justify-center rounded-sm border ${
                                 active
-                                  ? 'border-gain bg-gain text-white'
-                                  : 'border-line-2 bg-white'
+                                  ? 'border-accent bg-accent text-paper'
+                                  : 'border-line-2 bg-paper'
                               }`}
                             >
-                              {active ? <Check size={9} strokeWidth={3} /> : null}
+                              {active ? <Check size={10} strokeWidth={2.5} /> : null}
                             </span>
                             <span className="min-w-0 flex-1">{item.label}</span>
                           </button>
@@ -375,22 +375,22 @@ export function DayReviewDialog({
 
         <div className="rounded-lg border border-line bg-list/70 px-3.5 py-3">
           <div className="flex flex-wrap items-center justify-between gap-2">
-            <span className="inline-flex items-center gap-1.5 text-[11px] font-medium text-ink">
-              <BookOpenCheck size={13} className="text-accent" />
+            <span className="inline-flex items-center gap-1.5 text-xs font-medium text-ink">
+              <BookOpenCheck size={16} strokeWidth={1.5} className="text-accent" />
               本周自动汇总
             </span>
-            <span className="num text-[9.5px] text-faint">
+            <span className="num text-xs text-faint">
               {fmtDateCN(week.start)} – {fmtDateCN(week.end)}
             </span>
           </div>
-          <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-[10.5px] text-muted">
+          <div className="mt-2 flex flex-wrap items-center gap-x-5 gap-y-1 text-xs text-muted">
             <span>
               已平仓 <b className="num font-medium text-ink-2">{week.stats.count}</b> 笔
             </span>
             <span>
               净盈亏{' '}
               <b className="num font-medium text-ink-2">
-                {week.stats.count ? fmtSignedMoney(week.stats.netPnl, true) : '—'}
+                {week.stats.count ? fmtSignedMoney(week.stats.netPnl, true, account.currency) : '—'}
               </b>
             </span>
             <span>
@@ -402,20 +402,20 @@ export function DayReviewDialog({
               week.mistakes.tags.map((tag) => (
                 <span
                   key={tag.key}
-                  className="inline-flex h-5 items-center rounded-full bg-loss-soft px-2 text-[9.5px] text-loss"
+                  className="inline-flex h-5 items-center rounded-md bg-loss-soft px-2 text-xs text-loss"
                 >
                   {tag.key} × {tag.count}
                 </span>
               ))
             ) : (
-              <span className="text-[10px] text-faint">
+              <span className="text-xs text-faint">
                 {week.stats.count ? '本周没有标记错误标签。' : '本周还没有已平仓交易。'}
               </span>
             )}
           </div>
         </div>
 
-        <p className="text-[9.5px] text-faint">
+        <p className="text-xs text-faint">
           复盘日期：{fmtDateFullCN(date)} · 记录会自动保存在本机，并计入本月复盘节奏。
         </p>
       </div>

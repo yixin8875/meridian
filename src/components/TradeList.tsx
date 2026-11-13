@@ -105,10 +105,10 @@ export function TradeList({
 
   return (
     <>
-      <div className="flex h-[54px] shrink-0 items-center justify-between border-b border-line px-3">
+      <div className="flex h-14 shrink-0 items-center justify-between border-b border-line px-4">
         <div>
-          <h1 className="text-[13px] font-semibold text-ink">交易台账</h1>
-          <p className="mt-0.5 text-[10.5px] text-muted">
+          <h1 className="text-base font-medium text-ink">交易台账</h1>
+          <p className="mt-1 text-xs text-muted">
             {groups.total} 笔
             {date ? ` · ${fmtDateCN(date)}` : query ? ` · 搜索“${query}”` : ''}
           </p>
@@ -121,20 +121,20 @@ export function TradeList({
             aria-expanded={filtersOpen}
             title="按合约、形态、时段与日期筛选"
           >
-            <SlidersHorizontal size={15} />
+            <SlidersHorizontal size={16} strokeWidth={1.5} />
             {activeFilters ? (
-              <span className="absolute -right-0.5 -top-0.5 flex h-3.5 min-w-3.5 items-center justify-center rounded-full bg-accent px-1 text-[8px] font-semibold text-white">
+              <span className="absolute -right-0.5 -top-0.5 flex h-4 min-w-4 items-center justify-center rounded-sm bg-accent px-1 text-xs font-medium text-paper">
                 {activeFilters}
               </span>
             ) : null}
           </button>
           <button className="icon-btn" onClick={onNew} aria-label="记录交易">
-            <Plus size={16} />
+            <Plus size={16} strokeWidth={1.5} />
           </button>
         </div>
       </div>
 
-      <div className="flex shrink-0 items-center gap-1.5 border-b border-line px-3 py-2">
+      <div className="flex shrink-0 items-center gap-1.5 border-b border-line px-4 py-2.5">
         <div className="seg">
           {(
             [
@@ -150,25 +150,25 @@ export function TradeList({
         </div>
         {date ? (
           <button
-            className="inline-flex h-6 shrink-0 items-center gap-1 rounded-full border border-accent/25 bg-accent-soft px-2 text-[10.5px] font-medium text-accent transition-colors hover:border-accent/45"
+            className="inline-flex h-7 shrink-0 items-center gap-1.5 rounded-md border border-accent/25 bg-accent-soft px-2 text-xs font-medium text-accent transition-colors hover:border-accent/45"
             onClick={onClearDate}
             aria-label="清除日期筛选"
           >
-            <CalendarDays size={10} />
+            <CalendarDays size={12} strokeWidth={1.5} />
             {fmtDateCN(date)}
-            <X size={10} />
+            <X size={12} strokeWidth={1.5} />
           </button>
         ) : null}
-        <span className="ml-auto text-[10px] text-faint">{groups.total} 条</span>
+        <span className="ml-auto font-mono text-xs text-faint">{groups.total} 条</span>
       </div>
 
       {filtersOpen ? (
-        <div className="shrink-0 space-y-2 border-b border-line bg-white px-3 py-2.5">
+        <div className="shrink-0 space-y-2 border-b border-line bg-paper px-3 py-2.5">
           <div className="grid grid-cols-3 gap-2">
             <label>
-              <span className="mb-0.5 block text-[9px] text-faint">合约</span>
+              <span className="mb-1 block text-xs text-muted">合约</span>
               <select
-                className="input h-7 px-1.5 py-0 text-[10.5px]"
+                className="input h-8 px-2 py-0 text-xs"
                 value={symbolFilter}
                 onChange={(event) => setSymbolFilter(event.target.value)}
               >
@@ -181,9 +181,9 @@ export function TradeList({
               </select>
             </label>
             <label>
-              <span className="mb-0.5 block text-[9px] text-faint">形态</span>
+              <span className="mb-1 block text-xs text-muted">形态</span>
               <select
-                className="input h-7 px-1.5 py-0 text-[10.5px]"
+                className="input h-8 px-2 py-0 text-xs"
                 value={setupFilter}
                 onChange={(event) => setSetupFilter(event.target.value)}
               >
@@ -196,9 +196,9 @@ export function TradeList({
               </select>
             </label>
             <label>
-              <span className="mb-0.5 block text-[9px] text-faint">时段</span>
+              <span className="mb-1 block text-xs text-muted">时段</span>
               <select
-                className="input h-7 px-1.5 py-0 text-[10.5px]"
+                className="input h-8 px-2 py-0 text-xs"
                 value={sessionFilter}
                 onChange={(event) => setSessionFilter(event.target.value)}
               >
@@ -213,21 +213,21 @@ export function TradeList({
           </div>
           <div className="grid grid-cols-[1fr_auto_1fr] items-end gap-1.5">
             <label>
-              <span className="mb-0.5 block text-[9px] text-faint">开始日期</span>
+              <span className="mb-1 block text-xs text-muted">开始日期</span>
               <input
                 type="date"
-                className="input h-7 px-1.5 py-0 text-[10px]"
+                className="input h-8 px-2 py-0 text-xs"
                 max={toDate || undefined}
                 value={fromDate}
                 onChange={(event) => setFromDate(event.target.value)}
               />
             </label>
-            <span className="pb-1.5 text-[9px] text-faint">至</span>
+            <span className="pb-1.5 text-xs text-faint">至</span>
             <label>
-              <span className="mb-0.5 block text-[9px] text-faint">结束日期</span>
+              <span className="mb-1 block text-xs text-muted">结束日期</span>
               <input
                 type="date"
-                className="input h-7 px-1.5 py-0 text-[10px]"
+                className="input h-8 px-2 py-0 text-xs"
                 min={fromDate || undefined}
                 value={toDate}
                 onChange={(event) => setToDate(event.target.value)}
@@ -235,11 +235,11 @@ export function TradeList({
             </label>
           </div>
           <div className="flex items-center justify-between">
-            <span className="text-[9.5px] text-faint">
+            <span className="text-xs text-faint">
               {activeFilters ? `已启用 ${activeFilters} 项筛选` : '选择条件后自动生效'}
             </span>
             <button
-              className="text-[9.5px] text-accent hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline"
+              className="text-xs text-accent hover:underline disabled:cursor-not-allowed disabled:text-faint disabled:no-underline"
               onClick={clearFilters}
               disabled={!activeFilters}
             >
@@ -252,7 +252,7 @@ export function TradeList({
       <div className="min-h-0 flex-1 overflow-y-auto px-2 pb-4">
         {groups.entries.map(([date, items]) => (
           <section key={date}>
-            <div className="sticky top-0 z-10 flex items-center justify-between bg-list/95 px-2 pb-1 pt-3 text-[10.5px] font-medium text-faint backdrop-blur">
+            <div className="sticky top-0 z-10 flex items-center justify-between bg-list/95 px-2 pb-1.5 pt-4 text-xs text-muted backdrop-blur-sm">
               <span>
                 {fmtDateCN(date)} · {weekdayCN(date)}
               </span>
@@ -268,7 +268,7 @@ export function TradeList({
                   <IconBadge symbol={trade.symbol} />
                   <div className="min-w-0 flex-1">
                     <div className="flex items-center gap-1.5">
-                      <span className="truncate text-[12.5px] font-medium text-ink">
+                      <span className="truncate text-sm font-medium text-ink">
                         {trade.symbol} · {trade.setup}
                       </span>
                       {trade.status === 'open' ? (
@@ -279,21 +279,22 @@ export function TradeList({
                       ) : null}
                       {trade.charts?.length ? (
                         <ImageIcon
-                          size={11}
+                          size={12}
+                          strokeWidth={1.5}
                           className="shrink-0 text-faint"
                           aria-label={`${trade.charts.length} 张 K 线图`}
                         />
                       ) : null}
                     </div>
-                    <div className="mt-0.5 truncate text-[10.5px] text-muted">
+                    <div className="mt-1 truncate text-xs text-muted">
                       {trade.entryTime}
                       {trade.exitTime ? `–${trade.exitTime}` : ''} · {trade.qty} 手 ·{' '}
                       {trade.side === 'L' ? '多' : '空'}
                     </div>
                   </div>
                   <div className="shrink-0 text-right">
-                    <Pnl value={trade.pnl} className="block text-[12px] font-medium" />
-                    <RValue value={trade.rMultiple} className="mt-0.5 block text-[10.5px]" />
+                    <Pnl value={trade.pnl} className="block text-sm font-medium" />
+                    <RValue value={trade.rMultiple} className="mt-1 block text-xs" />
                   </div>
                 </button>
               ))}

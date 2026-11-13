@@ -156,9 +156,8 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
       >
         <defs>
           <linearGradient id="meridianArea" x1="0" y1="0" x2="0" y2="1">
-            <stop offset="0%" stopColor="#0b6cf0" stopOpacity="0.14" />
-            <stop offset="75%" stopColor="#0b6cf0" stopOpacity="0.02" />
-            <stop offset="100%" stopColor="#ffffff" stopOpacity="0" />
+            <stop offset="0%" stopColor="#b45309" stopOpacity="0.10" />
+            <stop offset="100%" stopColor="#b45309" stopOpacity="0" />
           </linearGradient>
         </defs>
 
@@ -171,15 +170,16 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
                 x2={PAD.left + PLOT_W}
                 y1={y}
                 y2={y}
-                stroke="#efede9"
+                stroke="#ece7dd"
                 strokeWidth="1"
               />
               <text
                 x={W - 6}
                 y={y + axisSize * 0.35}
                 textAnchor="end"
-                fill="#98989e"
+                fill="#7d7263"
                 fontSize={axisSize}
+                fontFamily="Cascadia Mono, Consolas, monospace"
               >
                 {fmtCompactMoney(value)}
               </text>
@@ -193,8 +193,9 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
             x={tick.x}
             y={H - 8}
             textAnchor="middle"
-            fill="#98989e"
+            fill="#7d7263"
             fontSize={axisSize}
+            fontFamily="Cascadia Mono, Consolas, monospace"
           >
             {tick.label}
           </text>
@@ -204,29 +205,36 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
         <path
           d={model.meanLine}
           fill="none"
-          stroke="#c3c9d1"
+          stroke="#d3cabb"
           strokeWidth="1"
           strokeDasharray="3 5"
         />
         <path
           d={model.line}
           fill="none"
-          stroke="#0b6cf0"
-          strokeWidth="1.7"
+          stroke="#b45309"
+          strokeWidth="1.6"
           strokeLinejoin="round"
           strokeLinecap="round"
         />
 
-        <circle cx={last.x} cy={last.y} r="6" fill="#0b6cf0" opacity="0.12" />
-        <circle cx={last.x} cy={last.y} r="3" fill="#0b6cf0" stroke="#fff" strokeWidth="1.6" />
+        <rect
+          x={last.x - 1}
+          y={last.y - 8}
+          width="2"
+          height="16"
+          rx="1"
+          fill="#b45309"
+        />
         <text
-          x={last.x - 8}
-          y={Math.max(last.y - 11, 14)}
+          x={last.x - 10}
+          y={Math.max(last.y - 12, 14)}
           textAnchor="end"
-          fill="#0b6cf0"
+          fill="#b45309"
           fontSize={valueSize}
-          fontWeight="600"
-          stroke="#ffffff"
+          fontWeight="500"
+          fontFamily="Cascadia Mono, Consolas, monospace"
+          stroke="#fffdf8"
           strokeWidth="3"
           paintOrder="stroke"
         >
@@ -240,7 +248,7 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
               x2={active.x}
               y1={PAD.top}
               y2={PAD.top + PLOT_H}
-              stroke="#b9c0c9"
+              stroke="#c9bfaf"
               strokeWidth="1"
               strokeDasharray="3 4"
             />
@@ -249,31 +257,31 @@ export function EquityChart({ points }: { points: EquityPointView[] }) {
               x2={PAD.left + PLOT_W}
               y1={active.y}
               y2={active.y}
-              stroke="#d8d6d0"
+              stroke="#d3cabb"
               strokeWidth="1"
               strokeDasharray="3 4"
             />
-            <circle cx={active.x} cy={active.y} r="4" fill="#fff" stroke="#0b6cf0" strokeWidth="2" />
+            <circle cx={active.x} cy={active.y} r="3" fill="#b45309" stroke="#fffdf8" strokeWidth="1.5" />
           </g>
         ) : null}
       </svg>
 
       {active ? (
         <div
-          className="pointer-events-none absolute top-1 z-10 min-w-[168px] -translate-x-1/2 rounded-lg border border-line bg-white/95 p-3 shadow-lg backdrop-blur"
+          className="pointer-events-none absolute top-1 z-10 min-w-42 -translate-x-1/2 rounded-lg border border-line bg-paper p-3 shadow-[0_8px_24px_rgba(32,28,23,0.08)]"
           style={{ left: `${tooltipLeft}%` }}
         >
-          <div className="text-[9.5px] font-medium uppercase tracking-[0.08em] text-faint">
+          <div className="text-xs text-faint">
             {monthEN(active.point.date)} {fmtDateShort(active.point.date)} · 第 {active.i + 1} 个交易日
           </div>
-          <div className="num mt-1 text-[17px] font-semibold text-ink">
-            {fmtMoney(active.point.equity, false)}
+          <div className="num mt-1.5 text-lg font-medium text-ink">
+            {fmtMoney(active.point.equity, true)}
           </div>
-          <div className="mt-2 space-y-1 border-t border-line pt-2 text-[10.5px]">
+          <div className="mt-2 space-y-1 border-t border-line pt-2 text-xs">
             <div className="flex justify-between gap-6">
               <span className="text-muted">当日</span>
               <span className={active.point.pnl >= 0 ? 'text-gain' : 'text-loss'}>
-                {fmtSignedMoney(active.point.pnl, false)}
+                {fmtSignedMoney(active.point.pnl, true)}
               </span>
             </div>
             <div className="flex justify-between gap-6">

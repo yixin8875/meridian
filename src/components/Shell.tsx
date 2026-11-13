@@ -1,6 +1,5 @@
 import { useEffect, useRef, type ReactNode } from 'react'
 import {
-  Activity,
   BookOpen,
   ChevronLeft,
   ChevronRight,
@@ -9,18 +8,19 @@ import {
   LayoutGrid,
   List,
   Plus,
+  ScanSearch,
   Search,
   Settings,
-  Sparkles,
   X,
 } from 'lucide-react'
 import type { Page } from '../types'
 import { AccountMenu } from './AccountMenu'
+import { MeridianMark } from './primitives'
 
 const NAV: { key: Page; label: string; icon: typeof LayoutGrid }[] = [
   { key: 'overview', label: '总览', icon: LayoutGrid },
   { key: 'trades', label: '交易台账', icon: List },
-  { key: 'mirror', label: '镜像分析', icon: Sparkles },
+  { key: 'mirror', label: '镜像分析', icon: ScanSearch },
   { key: 'notes', label: '复盘笔记', icon: BookOpen },
 ]
 
@@ -76,12 +76,10 @@ export function AppShell({
 
   return (
     <div className="flex h-full overflow-hidden bg-canvas text-ink">
-      <aside className="flex w-[228px] shrink-0 flex-col border-r border-line bg-sidebar">
-        <div className="flex h-[54px] items-center gap-2.5 px-4">
-          <span className="flex h-[30px] w-[30px] items-center justify-center rounded-lg bg-accent text-white shadow-[0_1px_2px_rgba(11,108,240,0.35)]">
-            <Activity size={17} strokeWidth={2.2} />
-          </span>
-          <span className="text-[13.5px] font-semibold tracking-[0.12em] text-ink">MERIDIAN</span>
+      <aside className="flex w-60 shrink-0 flex-col border-r border-line bg-sidebar">
+        <div className="flex h-14 items-center gap-2.5 px-4">
+          <MeridianMark size={20} className="shrink-0 text-ink" />
+          <span className="text-base font-medium tracking-wide text-ink">MERIDIAN</span>
         </div>
 
         <div className="px-2.5 pb-2">
@@ -100,10 +98,10 @@ export function AppShell({
                 onClick={() => onNavigate(item.key)}
                 aria-current={page === item.key ? 'page' : undefined}
               >
-                <Icon size={15} strokeWidth={1.8} className="shrink-0 text-muted" />
+                <Icon size={16} strokeWidth={1.5} className="shrink-0 text-muted" />
                 <span className="flex-1">{item.label}</span>
                 {count !== undefined ? (
-                  <span className="text-[10.5px] tabular-nums text-faint">{count}</span>
+                  <span className="font-mono text-xs tabular-nums text-faint">{count}</span>
                 ) : null}
                 {item.key === 'trades' && openCount > 0 ? (
                   <span
@@ -116,80 +114,78 @@ export function AppShell({
           })}
         </nav>
 
-        <div className="mt-5 px-3">
-          <div className="mb-1.5 flex items-center justify-between px-1">
+        <div className="mt-6 px-3">
+          <div className="mb-2 flex items-center justify-between px-1">
             <span className="section-label">形态</span>
-            <span className="text-[10px] text-faint">{setups.length}</span>
+            <span className="font-mono text-xs text-faint">{setups.length}</span>
           </div>
           <div className="space-y-0.5">
             {setups.slice(0, 5).map((setup, index) => (
               <button
                 key={setup.name}
-                className="nav-row h-7"
+                className="nav-row h-8"
                 onClick={() => {
                   onQuery(setup.name)
                   onNavigate('trades')
                 }}
               >
-                <span
-                  className="h-2 w-2 shrink-0 rounded-full"
-                  style={{
-                    backgroundColor: ['#0b6cf0', '#7c5cd6', '#2c8f72', '#c47a32', '#c0524c'][index],
-                  }}
-                />
-                <span className="flex-1 truncate text-[11.5px] text-ink-2">{setup.name}</span>
-                <span className="text-[10.5px] text-faint">{setup.count}</span>
+                <span className="w-5 shrink-0 font-mono text-xs text-faint">
+                  {String(index + 1).padStart(2, '0')}
+                </span>
+                <span className="flex-1 truncate text-sm text-ink-2">{setup.name}</span>
+                <span className="font-mono text-xs text-faint">{setup.count}</span>
               </button>
             ))}
             {!setups.length ? (
-              <p className="px-2 py-2 text-[11px] text-faint">记录交易后自动汇总</p>
+              <p className="px-2 py-2 text-xs text-faint">记录交易后自动汇总</p>
             ) : null}
           </div>
         </div>
 
         <div className="mt-auto px-2.5 pb-3">
-          <div className="mx-1 mb-2 flex items-center gap-1.5 text-[10px] text-faint">
+          <div className="mx-2 mb-2 flex items-center gap-1.5 text-xs text-faint">
             <span
               className={`h-1.5 w-1.5 rounded-full ${saving || unsaved ? 'bg-warn' : 'bg-gain'}`}
             />
-            {saving ? '正在保存…' : unsaved ? '有未保存更改' : '自动保存已开启'}
+            {saving ? '保存中' : unsaved ? '有未保存更改' : '自动保存已开启'}
           </div>
           <button
             className={`nav-row ${page === 'settings' ? 'nav-row-active' : ''}`}
             onClick={() => onNavigate('settings')}
           >
-            <Settings size={15} strokeWidth={1.8} className="text-muted" />
+            <Settings size={16} strokeWidth={1.5} className="text-muted" />
             设置
           </button>
-          <div className="mt-1 flex items-center gap-1.5 px-2 py-1 text-[9.5px] text-faint">
-            <Database size={11} />
-            Rust · 本地文件
+          <div className="mt-1 flex items-center gap-2 px-2 py-1 text-xs text-faint">
+            <Database size={14} strokeWidth={1.5} />
+            本地文件
           </div>
         </div>
       </aside>
 
       <div className="flex min-w-0 flex-1 flex-col">
-        <header className="flex h-[52px] shrink-0 items-center gap-2 border-b border-line bg-list px-3">
+        <header className="flex h-14 shrink-0 items-center gap-2 border-b border-line bg-sidebar px-4">
           <div className="flex items-center gap-0.5 text-faint">
-            <button className="icon-btn h-7 w-7" aria-label="返回" onClick={() => history.back()}>
-              <ChevronLeft size={15} />
+            <button className="icon-btn h-8 w-8" aria-label="返回" onClick={() => history.back()}>
+              <ChevronLeft size={16} strokeWidth={1.5} />
             </button>
-            <button className="icon-btn h-7 w-7" aria-label="前进" onClick={() => history.forward()}>
-              <ChevronRight size={15} />
+            <button className="icon-btn h-8 w-8" aria-label="前进" onClick={() => history.forward()}>
+              <ChevronRight size={16} strokeWidth={1.5} />
             </button>
           </div>
 
-          <div className="relative mx-auto w-full max-w-[560px]">
+          <div className="relative mx-auto w-full max-w-lg">
             <Search
-              size={14}
-              className="pointer-events-none absolute left-2.5 top-1/2 -translate-y-1/2 text-faint"
+              size={16}
+              strokeWidth={1.5}
+              className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-faint"
             />
             <input
               ref={searchRef}
               value={query}
               onChange={(event) => onQuery(event.target.value)}
-              className="h-8 w-full rounded-md border border-line bg-white pl-8 pr-20 text-[12px] text-ink outline-none transition placeholder:text-faint focus:border-accent/50 focus:ring-2 focus:ring-accent/10"
-              placeholder="搜索交易、笔记或形态"
+              className="h-9 w-full rounded-lg border border-line bg-paper pl-9 pr-24 text-sm text-ink outline-none transition placeholder:text-faint focus:border-accent/50 focus:ring-2 focus:ring-accent/10"
+              placeholder="搜索"
             />
             {query ? (
               <button
@@ -197,10 +193,10 @@ export function AppShell({
                 onClick={() => onQuery('')}
                 aria-label="清除搜索"
               >
-                <X size={12} />
+                <X size={14} />
               </button>
             ) : null}
-            <span className="kbd absolute right-2 top-1/2 -translate-y-1/2">
+            <span className="kbd absolute right-2.5 top-1/2 -translate-y-1/2">
               {isMac ? '⌘K' : 'Ctrl K'}
             </span>
           </div>
@@ -211,10 +207,10 @@ export function AppShell({
               aria-label="关于"
               onClick={() => onNavigate('settings')}
             >
-              <CircleHelp size={15} />
+              <CircleHelp size={16} strokeWidth={1.5} />
             </button>
             <button className="btn btn-primary" onClick={onNewTrade}>
-              <Plus size={14} />
+              <Plus size={16} strokeWidth={1.5} />
               记录交易
             </button>
           </div>
@@ -222,11 +218,11 @@ export function AppShell({
 
         <div className="flex min-h-0 flex-1">
           {list ? (
-            <div className="flex w-[326px] shrink-0 flex-col border-r border-line bg-list">
+            <div className="flex w-84 shrink-0 flex-col border-r border-line bg-list">
               {list}
             </div>
           ) : null}
-          <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto bg-white">
+          <main ref={mainRef} className="min-w-0 flex-1 overflow-y-auto bg-paper">
             {children}
           </main>
         </div>

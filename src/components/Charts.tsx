@@ -28,7 +28,7 @@ import { loadChartUrl } from '../lib/charts'
 
 export type ChartItem = ChartRef & { preview?: string }
 
-const ANNOTATION_COLORS = ['#ef4444', '#f59e0b', '#3b82f6', '#22c55e', '#ffffff'] as const
+const ANNOTATION_COLORS = ['#dd5a4d', '#d99024', '#5b8fc7', '#3f9e78', '#fdfbf4'] as const
 const ANNOTATION_WIDTHS = [2, 4, 6] as const
 const TOOLS = [
   { key: 'pen' as const, label: '画笔', Icon: Pencil },
@@ -206,41 +206,41 @@ export function ChartTile({
           <img src={url} alt={chart.name} className={`${heightClass} w-full object-cover`} />
         ) : (
           <div
-            className={`${heightClass} flex w-full items-center justify-center gap-1.5 bg-list text-[10.5px] text-faint`}
+            className={`${heightClass} flex w-full items-center justify-center gap-1.5 bg-list text-xs text-faint`}
           >
             {loading ? (
               <>
-                <Loader2 size={13} className="animate-spin" />
+                <Loader2 size={14} className="animate-spin" />
                 加载中
               </>
             ) : (
               <>
-                <ImageOff size={13} />
+                <ImageOff size={14} />
                 图片不可用
               </>
             )}
           </div>
         )}
       </button>
-      <div className="flex items-center gap-1 border-t border-line bg-white px-2 py-1">
+      <div className="flex items-center gap-1 border-t border-line bg-paper px-2 py-1">
         {chart.annotations?.length ? (
           <Pencil
-            size={10}
+            size={12}
             className="shrink-0 text-accent"
             aria-label={`${chart.annotations.length} 个标注`}
           />
         ) : (
-          <ImageIcon size={10} className="shrink-0 text-faint" />
+          <ImageIcon size={12} className="shrink-0 text-faint" />
         )}
-        <span className="min-w-0 flex-1 truncate text-[9.5px] text-faint">{chart.name}</span>
+        <span className="min-w-0 flex-1 truncate text-xs text-faint">{chart.name}</span>
         {onRemove ? (
           <button
             type="button"
-            className="flex h-4 w-4 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-loss-soft hover:text-loss"
+            className="flex h-5 w-5 shrink-0 items-center justify-center rounded text-faint transition-colors hover:bg-loss-soft hover:text-loss"
             onClick={onRemove}
             aria-label="移除这张图"
           >
-            <X size={11} />
+            <X size={12} strokeWidth={1.5} />
           </button>
         ) : null}
       </div>
@@ -274,7 +274,7 @@ export function ChartUploader({
     <div>
       <div className="mb-1.5 flex items-center justify-between">
         <span className="field-label mb-0">K 线图</span>
-        <span className="text-[10px] text-faint">
+        <span className="text-xs text-faint">
           {items.length ? `${items.length} 张 · 自动压缩到 1800px` : '可选，最多建议 6 张'}
         </span>
       </div>
@@ -317,14 +317,14 @@ export function ChartUploader({
           pick(event.dataTransfer.files)
         }}
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-accent ring-1 ring-line">
-          {busy ? <Loader2 size={15} className="animate-spin" /> : <Upload size={15} />}
+        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-paper text-accent ring-1 ring-line">
+          {busy ? <Loader2 size={16} className="animate-spin" /> : <Upload size={16} strokeWidth={1.5} />}
         </span>
         <div className="min-w-0 flex-1">
-          <div className="text-[11.5px] font-medium text-ink">
+          <div className="text-xs font-medium text-ink">
             {busy ? '正在处理图片…' : '粘贴截图，或点击 / 拖入图片'}
           </div>
-          <div className="mt-0.5 text-[10px] text-faint">
+          <div className="mt-0.5 text-xs text-faint">
             支持 Ctrl+V 直接粘贴剪贴板里的 K 线图 · PNG / JPG
           </div>
         </div>
@@ -366,7 +366,7 @@ export function ChartGallery({
             key={chart.id}
             chart={chart}
             preview={chart.preview}
-            heightClass="h-[150px]"
+            heightClass="h-44"
             onOpen={() => setIndex(position)}
           />
         ))}
@@ -602,25 +602,25 @@ function LightboxBody({
 
   return createPortal(
     <div
-      className="fixed inset-0 z-[60] flex flex-col bg-[#16161a]/88 backdrop-blur-[2px]"
+      className="fixed inset-0 z-[60] flex flex-col bg-[#17130e]/93"
       onMouseDown={onClose}
       role="dialog"
       aria-modal="true"
       aria-label={chart.name}
     >
       <div
-        className="flex h-12 shrink-0 items-center justify-between gap-4 px-4 text-white/85"
+        className="flex h-12 shrink-0 items-center justify-between gap-4 px-4 text-paper/85"
         onMouseDown={(event) => event.stopPropagation()}
       >
-        <span className="min-w-0 truncate text-[11.5px]">{chart.name}</span>
+        <span className="min-w-0 truncate text-xs">{chart.name}</span>
         <div className="flex shrink-0 items-center gap-1.5">
-          <span className="num mr-1 text-[11px] text-white/55">
+          <span className="num mr-1 text-xs text-paper/55">
             {index + 1} / {charts.length}
           </span>
           {url ? (
             <button
-              className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] transition-colors ${
-                editing ? 'bg-white/20 text-white' : 'text-white/80 hover:bg-white/10'
+              className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors ${
+                editing ? 'bg-paper/20 text-paper' : 'text-paper/80 hover:bg-paper/10'
               }`}
               onClick={() => {
                 setEditing((value) => !value)
@@ -628,7 +628,7 @@ function LightboxBody({
               }}
               title="在截图上画线、框选或写文字"
             >
-              <Pencil size={13} />
+            <Pencil size={16} strokeWidth={1.5} />
               {editing ? '退出标注' : draft.length ? `标注 ${draft.length}` : '标注'}
             </button>
           ) : null}
@@ -636,14 +636,14 @@ function LightboxBody({
             <a
               href={url}
               download={chart.name}
-              className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[11px] text-white/80 hover:bg-white/10"
+              className="inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs text-paper/80 hover:bg-paper/10"
             >
-              <Download size={13} />
+              <Download size={16} strokeWidth={1.5} />
               下载
             </a>
           ) : null}
           <button
-            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-white/80 hover:bg-white/10"
+            className="inline-flex h-7 w-7 items-center justify-center rounded-md text-paper/80 hover:bg-paper/10"
             onClick={onClose}
             aria-label="关闭"
           >
@@ -654,15 +654,15 @@ function LightboxBody({
 
       {editing ? (
         <div
-          className="flex shrink-0 flex-wrap items-center gap-2 border-b border-white/10 bg-black/20 px-4 py-2"
+          className="flex shrink-0 flex-wrap items-center gap-2 border-b border-paper/10 bg-black/20 px-4 py-2"
           onMouseDown={(event) => event.stopPropagation()}
         >
-          <div className="flex items-center gap-0.5 rounded-lg bg-white/10 p-0.5">
+          <div className="flex items-center gap-0.5 rounded-lg bg-paper/10 p-0.5">
             {TOOLS.map(({ key, label, Icon }) => (
               <button
                 key={key}
-                className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-[10.5px] transition-colors ${
-                  tool === key ? 'bg-white text-ink' : 'text-white/75 hover:bg-white/10'
+                className={`inline-flex h-7 items-center gap-1.5 rounded-md px-2 text-xs transition-colors ${
+                  tool === key ? 'bg-paper text-ink' : 'text-paper/75 hover:bg-paper/10'
                 }`}
                 onClick={() => {
                   setTool(key)
@@ -670,7 +670,7 @@ function LightboxBody({
                 }}
                 title={label}
               >
-                <Icon size={13} />
+                <Icon size={16} strokeWidth={1.5} />
                 {label}
               </button>
             ))}
@@ -680,8 +680,8 @@ function LightboxBody({
             {ANNOTATION_COLORS.map((swatch) => (
               <button
                 key={swatch}
-                className={`h-4 w-4 rounded-full ring-2 transition-transform ${
-                  color === swatch ? 'scale-110 ring-white' : 'ring-white/25 hover:scale-105'
+                className={`h-4 w-4 rounded-full ring-2 transition-colors ${
+                  color === swatch ? 'ring-paper' : 'ring-paper/20 hover:ring-paper/50'
                 }`}
                 style={{ backgroundColor: swatch }}
                 onClick={() => setColor(swatch)}
@@ -691,12 +691,12 @@ function LightboxBody({
             ))}
           </div>
 
-          <div className="flex items-center gap-1 rounded-lg bg-white/10 px-1 py-0.5">
+          <div className="flex items-center gap-1 rounded-lg bg-paper/10 px-1 py-0.5">
             {ANNOTATION_WIDTHS.map((width) => (
               <button
                 key={width}
                 className={`flex h-6 w-6 items-center justify-center rounded-md transition-colors ${
-                  strokeWidth === width ? 'bg-white text-ink' : 'text-white/70 hover:bg-white/10'
+                  strokeWidth === width ? 'bg-paper text-ink' : 'text-paper/70 hover:bg-paper/10'
                 }`}
                 onClick={() => setStrokeWidth(width)}
                 aria-label={`线宽 ${width}`}
@@ -712,23 +712,23 @@ function LightboxBody({
 
           <div className="ml-auto flex items-center gap-1">
             <button
-              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10.5px] text-white/75 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-white/30"
+              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-paper/75 transition-colors hover:bg-paper/10 disabled:cursor-not-allowed disabled:text-paper/30"
               onClick={undo}
               disabled={!history.length}
             >
-              <Undo2 size={13} />
+              <Undo2 size={16} strokeWidth={1.5} />
               撤销
             </button>
             <button
-              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-[10.5px] text-white/75 transition-colors hover:bg-white/10 disabled:cursor-not-allowed disabled:text-white/30"
+              className="inline-flex h-7 items-center gap-1 rounded-md px-2 text-xs text-paper/75 transition-colors hover:bg-paper/10 disabled:cursor-not-allowed disabled:text-paper/30"
               onClick={clear}
               disabled={!draft.length}
             >
-              <Trash2 size={13} />
+              <Trash2 size={16} strokeWidth={1.5} />
               清空
             </button>
             <button
-              className="inline-flex h-7 items-center rounded-md bg-white px-2.5 text-[10.5px] font-medium text-ink transition-colors hover:bg-white/90"
+              className="inline-flex h-7 items-center rounded-md bg-paper px-2.5 text-xs font-medium text-ink transition-colors hover:bg-paper/90"
               onClick={() => {
                 setEditing(false)
                 setTextDraft(null)
@@ -752,7 +752,7 @@ function LightboxBody({
               alt={chart.name}
               onLoad={measure}
               draggable={false}
-              className="block max-w-full rounded-md bg-white object-contain shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
+              className="block max-w-full rounded-md bg-paper object-contain shadow-[0_20px_60px_rgba(0,0,0,0.45)]"
               style={{ maxHeight: editing ? 'calc(100vh - 156px)' : 'calc(100vh - 112px)' }}
             />
             {box.width > 0 && box.height > 0 ? (
@@ -806,7 +806,7 @@ function LightboxBody({
                 onBlur={commitText}
                 onPointerDown={(event) => event.stopPropagation()}
                 placeholder="输入标注文字，回车确认"
-                className="absolute z-10 h-8 w-[190px] rounded-md border border-white/50 bg-[#16161a]/92 px-2 text-[12px] text-white outline-none placeholder:text-white/40"
+                className="absolute z-10 h-8 w-[190px] rounded-md border border-paper/50 bg-[#1c1813]/94 px-2 text-xs text-paper outline-none placeholder:text-paper/40"
                 style={{
                   left: `${textDraft.x * 100}%`,
                   top: `${textDraft.y * 100}%`,
@@ -816,15 +816,15 @@ function LightboxBody({
             ) : null}
           </div>
         ) : (
-          <span className="flex items-center gap-2 text-[12px] text-white/60">
-            {loading ? <Loader2 size={15} className="animate-spin" /> : <ImageOff size={15} />}
+          <span className="flex items-center gap-2 text-xs text-paper/60">
+            {loading ? <Loader2 size={16} className="animate-spin" /> : <ImageOff size={16} />}
             {loading ? '正在读取图片…' : '图片文件不存在'}
           </span>
         )}
 
         {!editing && index > 0 ? (
           <button
-            className="absolute left-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/20"
+            className="absolute left-4 flex h-9 w-9 items-center justify-center rounded-full bg-paper/10 text-paper/80 transition-colors hover:bg-paper/20"
             onClick={() => onNavigate(index - 1)}
             aria-label="上一张"
           >
@@ -833,7 +833,7 @@ function LightboxBody({
         ) : null}
         {!editing && index < charts.length - 1 ? (
           <button
-            className="absolute right-4 flex h-9 w-9 items-center justify-center rounded-full bg-white/10 text-white/80 transition-colors hover:bg-white/20"
+            className="absolute right-4 flex h-9 w-9 items-center justify-center rounded-full bg-paper/10 text-paper/80 transition-colors hover:bg-paper/20"
             onClick={() => onNavigate(index + 1)}
             aria-label="下一张"
           >

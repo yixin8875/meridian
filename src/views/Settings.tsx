@@ -8,7 +8,6 @@ import {
   ListChecks,
   Pencil,
   Plus,
-  Sparkles,
   Trash2,
   Upload,
   Wallet,
@@ -449,18 +448,18 @@ export function Settings() {
   }
 
   return (
-    <div className="fade-in mx-auto max-w-[820px] px-8 py-7">
-      <div className="flex items-end justify-between gap-4">
+    <div className="fade-in mx-auto max-w-5xl px-8 py-8">
+      <div className="flex flex-wrap items-end justify-between gap-4">
         <div>
-          <h1 className="text-[20px] font-semibold tracking-[-0.01em] text-ink">设置</h1>
-          <p className="mt-1 text-[11.5px] text-muted">账户、数据安全与导入导出</p>
+          <h1 className="text-3xl font-medium text-ink">设置</h1>
+          <p className="mt-2 text-sm text-muted">账户、数据安全与导入导出</p>
         </div>
-        <div className="flex items-center gap-2 text-[10.5px] text-faint">
+        <div className="flex items-center gap-2.5 text-xs text-faint">
           <span
             className={`h-1.5 w-1.5 rounded-full ${saving || unsaved ? 'bg-warn' : 'bg-gain'}`}
           />
-          {saving ? '正在保存…' : unsaved ? '有未保存更改' : '自动保存已开启'}
-          <button className="btn btn-secondary h-7 px-2 text-[11px]" onClick={() => void saveNow()}>
+          {saving ? '保存中' : unsaved ? '有未保存更改' : '自动保存已开启'}
+          <button className="btn btn-secondary h-8 px-2.5 text-xs" onClick={() => void saveNow()}>
             立即保存
           </button>
         </div>
@@ -468,7 +467,7 @@ export function Settings() {
 
       {notice ? (
         <div
-          className={`mt-4 flex items-start justify-between gap-3 rounded-lg border px-3 py-2 text-[11.5px] ${
+          className={`mt-5 flex items-start justify-between gap-3 rounded-lg border px-4 py-3 text-sm ${
             notice.tone === 'ok'
               ? 'border-gain/25 bg-gain-soft text-gain'
               : 'border-loss/25 bg-loss-soft text-loss'
@@ -481,13 +480,13 @@ export function Settings() {
         </div>
       ) : null}
 
-      <div className="mt-4 flex w-fit items-center gap-0.5 rounded-lg border border-line bg-list p-0.5">
+      <div className="mt-6 flex w-fit items-center gap-1 rounded-lg border border-line bg-canvas p-1">
         {SETTINGS_TABS.map((item) => (
           <button
             key={item.key}
-            className={`rounded-md px-3 py-1.5 text-[11.5px] transition-colors ${
+            className={`rounded-md px-3.5 py-2 text-sm transition-colors ${
               tab === item.key
-                ? 'bg-white font-medium text-ink shadow-[0_1px_2px_rgba(20,20,25,0.08)]'
+                ? 'bg-paper font-medium text-ink shadow-[0_1px_2px_rgba(32,28,23,0.08)]'
                 : 'text-muted hover:text-ink'
             }`}
             onClick={() => setTab(item.key)}
@@ -499,19 +498,19 @@ export function Settings() {
 
       {tab === 'account' ? (
         <>
-      <section className="mt-3 rounded-xl border border-line bg-white">
+      <section className="mt-6 rounded-xl border border-line bg-paper">
         <div className="flex items-center justify-between gap-4 px-5 py-4">
           <div>
-            <h2 className="text-[12.5px] font-semibold text-ink">账户</h2>
-            <p className="mt-0.5 text-[10.5px] text-faint">
+            <h2 className="text-base font-medium text-ink">账户</h2>
+            <p className="mt-0.5 text-xs text-faint">
               每个账户有独立的起始权益、手续费、交易台账、每日复盘与笔记。
             </p>
           </div>
           <button
-            className="btn btn-secondary h-8 shrink-0 px-2.5 text-[11px]"
+            className="btn btn-secondary h-8 shrink-0 px-2.5 text-xs"
             onClick={() => setCreating(true)}
           >
-            <Plus size={13} />
+            <Plus size={16} strokeWidth={1.5} />
             新建账户
           </button>
         </div>
@@ -525,36 +524,36 @@ export function Settings() {
               (review) => review.accountId === entry.id,
             ).length
             return (
-              <div key={entry.id} className="flex items-center gap-3 px-5 py-3">
+              <div key={entry.id} className="flex items-center gap-3 px-5 py-4">
                 <button
-                  className={`flex h-4 w-4 shrink-0 items-center justify-center rounded-full border transition-colors ${
+                  className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-sm border transition-colors ${
                     active
-                      ? 'border-accent bg-accent text-white'
-                      : 'border-line-2 bg-white hover:border-accent/50'
+                      ? 'border-accent bg-accent text-paper'
+                      : 'border-line-2 bg-paper hover:border-accent/50'
                   }`}
                   onClick={() => setActiveAccount(entry.id)}
                   aria-label={active ? `${entry.name}（当前）` : `切换到 ${entry.name}`}
                 >
-                  {active ? <Check size={9} strokeWidth={3} /> : null}
+                  {active ? <Check size={12} strokeWidth={2.5} /> : null}
                 </button>
 
                 <div className="min-w-0 flex-1">
                   <div className="flex items-center gap-2">
-                    <span className="truncate text-[12.5px] font-medium text-ink">
+                    <span className="truncate text-sm font-medium text-ink">
                       {entry.name}
                     </span>
                     {active ? (
-                      <span className="rounded bg-accent-soft px-1.5 py-0.5 text-[9.5px] font-medium text-accent">
+                      <span className="rounded-md bg-accent-soft px-2 py-0.5 text-xs font-medium text-accent">
                         当前
                       </span>
                     ) : null}
-                    <span className="rounded bg-list px-1.5 py-0.5 text-[9.5px] text-muted">
+                    <span className="rounded-md bg-canvas px-2 py-0.5 text-xs text-muted">
                       {entry.currency === 'USC' ? '美分' : 'USD'}
                     </span>
                   </div>
-                  <div className="num mt-0.5 truncate text-[10.5px] text-faint">
-                    权益 {fmtMoney(equityOf(entry), false, entry.currency)} · 起始{' '}
-                    {fmtMoney(entry.startingEquity, false, entry.currency)} · 手续费{' '}
+                  <div className="num mt-0.5 truncate text-xs text-faint">
+                    权益 {fmtMoney(equityOf(entry), true, entry.currency)} · 起始{' '}
+                    {fmtMoney(entry.startingEquity, true, entry.currency)} · 手续费{' '}
                     {fmtMoney(entry.feePerContract, true, entry.currency)}/手 · {count} 笔 ·{' '}
                     {reviewCount} 篇复盘 · {noteCount} 篇笔记
                   </div>
@@ -563,7 +562,7 @@ export function Settings() {
                 {removing === entry.id ? (
                   <div className="flex shrink-0 items-center gap-1.5">
                     <button
-                      className="btn btn-danger h-7 px-2 text-[10.5px]"
+                      className="btn btn-danger h-8 px-2.5 text-xs"
                       onClick={() => {
                         deleteAccount(entry.id)
                         setRemoving(null)
@@ -576,7 +575,7 @@ export function Settings() {
                       确认删除
                     </button>
                     <button
-                      className="btn btn-secondary h-7 px-2 text-[10.5px]"
+                      className="btn btn-secondary h-8 px-2.5 text-xs"
                       onClick={() => setRemoving(null)}
                     >
                       取消
@@ -593,7 +592,7 @@ export function Settings() {
                         setEditing(entry)
                       }}
                     >
-                      <Pencil size={13} />
+                      <Pencil size={16} strokeWidth={1.5} />
                     </button>
                     <button
                       className="icon-btn h-7 w-7 hover:text-loss disabled:cursor-not-allowed disabled:opacity-35"
@@ -602,7 +601,7 @@ export function Settings() {
                       disabled={accounts.length <= 1}
                       onClick={() => setRemoving(entry.id)}
                     >
-                      <Trash2 size={13} />
+                      <Trash2 size={16} strokeWidth={1.5} />
                     </button>
                   </div>
                 )}
@@ -610,58 +609,58 @@ export function Settings() {
             )
           })}
         </div>
-        <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] text-faint">
+        <div className="border-t border-line bg-list px-5 py-2.5 text-xs text-faint">
           共 {accounts.length} 个账户 · 删除账户会连同其交易、每日复盘、资金流水、笔记与 K 线图一起删除，无法恢复。
         </div>
       </section>
 
-      <section className="mt-3 rounded-xl border border-line bg-white">
+      <section className="mt-6 rounded-xl border border-line bg-paper">
         <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3.5">
           <div>
-            <h2 className="text-[12.5px] font-semibold text-ink">资金流水</h2>
-            <p className="mt-0.5 text-[10.5px] text-faint">
+            <h2 className="text-base font-medium text-ink">资金流水</h2>
+            <p className="mt-0.5 text-xs text-faint">
               出入金与分红单独记录；权益曲线包含它们，收益率与回撤只衡量交易表现。
             </p>
           </div>
           <button
-            className="btn btn-secondary h-8 shrink-0 px-2.5 text-[11px]"
+            className="btn btn-secondary h-8 shrink-0 px-2.5 text-xs"
             onClick={() => {
               setEditingFlow(null)
               setFlowOpen(true)
             }}
           >
-            <Plus size={13} />
+            <Plus size={16} strokeWidth={1.5} />
             记录资金变动
           </button>
         </div>
         <div className="divider" />
         <div className="grid grid-cols-4 divide-x divide-line border-b border-line">
           <div className="px-4 py-2.5">
-            <div className="text-[9.5px] text-faint">净流入</div>
+            <div className="text-xs text-faint">净流入</div>
             <div
-              className={`num mt-0.5 text-[12.5px] font-semibold ${
+              className={`num mt-0.5 text-sm font-medium ${
                 flowSummary.net > 0 ? 'text-gain' : flowSummary.net < 0 ? 'text-loss' : 'text-ink'
               }`}
             >
-              {fmtSignedMoney(flowSummary.net, true)}
+              {fmtSignedMoney(flowSummary.net, true, account.currency)}
             </div>
           </div>
           <div className="px-4 py-2.5">
-            <div className="text-[9.5px] text-faint">入金</div>
-            <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
-              {fmtMoney(flowSummary.deposits, false)}
+            <div className="text-xs text-faint">入金</div>
+            <div className="num mt-0.5 text-sm font-medium text-ink">
+              {fmtMoney(flowSummary.deposits, true, account.currency)}
             </div>
           </div>
           <div className="px-4 py-2.5">
-            <div className="text-[9.5px] text-faint">出金</div>
-            <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
-              {fmtMoney(flowSummary.withdrawals, false)}
+            <div className="text-xs text-faint">出金</div>
+            <div className="num mt-0.5 text-sm font-medium text-ink">
+              {fmtMoney(flowSummary.withdrawals, true, account.currency)}
             </div>
           </div>
           <div className="px-4 py-2.5">
-            <div className="text-[9.5px] text-faint">分红 / 利息</div>
-            <div className="num mt-0.5 text-[12.5px] font-medium text-ink">
-              {fmtMoney(flowSummary.dividends, false)}
+            <div className="text-xs text-faint">分红 / 利息</div>
+            <div className="num mt-0.5 text-sm font-medium text-ink">
+              {fmtMoney(flowSummary.dividends, true, account.currency)}
             </div>
           </div>
         </div>
@@ -673,30 +672,30 @@ export function Settings() {
               const sign = kind?.sign ?? 1
               return (
                 <div key={flow.id} className="flex items-center gap-3 px-5 py-2.5">
-                  <span className="num w-[74px] shrink-0 text-[10.5px] text-faint">
+                  <span className="num w-[74px] shrink-0 text-xs text-faint">
                     {flow.date}
                   </span>
                   <span
-                    className={`inline-flex h-5 shrink-0 items-center rounded-full px-2 text-[9.5px] ${
+                    className={`inline-flex h-5 shrink-0 items-center rounded-md px-2 text-xs ${
                       sign > 0 ? 'bg-gain-soft text-gain' : 'bg-warn-soft text-warn'
                     }`}
                   >
                     {kind?.short ?? flow.kind}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[11px] text-muted">
+                  <span className="min-w-0 flex-1 truncate text-xs text-muted">
                     {flow.note || '—'}
                   </span>
                   <span
-                    className={`num shrink-0 text-[11.5px] font-medium ${
+                    className={`num shrink-0 text-xs font-medium ${
                       sign > 0 ? 'text-gain' : 'text-loss'
                     }`}
                   >
-                    {fmtSignedMoney(flow.amount * sign, true)}
+                    {fmtSignedMoney(flow.amount * sign, true, account.currency)}
                   </span>
                   {removingFlow === flow.id ? (
                     <div className="flex shrink-0 items-center gap-1">
                       <button
-                        className="btn btn-danger h-6 px-2 text-[10px]"
+                        className="btn btn-danger h-6 px-2 text-xs"
                         onClick={() => {
                           deleteCashFlow(flow.id)
                           setRemovingFlow(null)
@@ -706,7 +705,7 @@ export function Settings() {
                         确认删除
                       </button>
                       <button
-                        className="btn btn-secondary h-6 px-2 text-[10px]"
+                        className="btn btn-secondary h-6 px-2 text-xs"
                         onClick={() => setRemovingFlow(null)}
                       >
                         取消
@@ -715,7 +714,7 @@ export function Settings() {
                   ) : (
                     <div className="flex shrink-0 items-center gap-0.5">
                       <button
-                        className="icon-btn h-6 w-6"
+                        className="icon-btn h-7 w-7"
                         title="编辑资金流水"
                         aria-label="编辑资金流水"
                         onClick={() => {
@@ -723,15 +722,15 @@ export function Settings() {
                           setFlowOpen(true)
                         }}
                       >
-                        <Pencil size={11} />
+                        <Pencil size={14} strokeWidth={1.5} />
                       </button>
                       <button
-                        className="icon-btn h-6 w-6 hover:text-loss"
+                        className="icon-btn h-7 w-7 hover:text-loss"
                         title="删除资金流水"
                         aria-label="删除资金流水"
                         onClick={() => setRemovingFlow(flow.id)}
                       >
-                        <Trash2 size={11} />
+                        <Trash2 size={14} strokeWidth={1.5} />
                       </button>
                     </div>
                   )}
@@ -741,24 +740,24 @@ export function Settings() {
           </div>
         ) : (
           <div className="px-5 py-6 text-center">
-            <p className="text-[11px] text-muted">还没有资金流水</p>
-            <p className="mt-1 text-[10px] text-faint">
+            <p className="text-xs text-muted">还没有资金流水</p>
+            <p className="mt-1 text-xs text-faint">
               记录入金、出金或分红后，账户权益会按实际资金变化。
             </p>
           </div>
         )}
-        <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] text-faint">
-          当前账户累计净流入 {fmtSignedMoney(flowSummary.net, true)} · 流水只影响「{account.name}」
+        <div className="border-t border-line bg-list px-5 py-2.5 text-xs text-faint">
+          当前账户累计净流入 {fmtSignedMoney(flowSummary.net, true, account.currency)} · 流水只影响「{account.name}」
         </div>
       </section>
         </>
       ) : null}
 
       {tab === 'dictionary' ? (
-      <section className="mt-3 rounded-xl border border-line bg-white">
+      <section className="mt-6 rounded-xl border border-line bg-paper">
         <div className="px-5 py-4">
-          <h2 className="text-[12.5px] font-semibold text-ink">交易字典</h2>
-          <p className="mt-0.5 text-[10.5px] text-faint">
+          <h2 className="text-base font-medium text-ink">交易字典</h2>
+          <p className="mt-0.5 text-xs text-faint">
             合约、时段、形态、纪律项、错误标签与盘前检查清单都可以自己维护；改名会同步历史记录。
           </p>
         </div>
@@ -767,14 +766,14 @@ export function Settings() {
         <div className="px-5 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11.5px] font-medium text-ink">合约</div>
-              <div className="mt-0.5 text-[10px] text-faint">点值用于计算盈亏与 R 倍数</div>
+              <div className="text-xs font-medium text-ink">合约</div>
+              <div className="mt-0.5 text-xs text-faint">点值用于计算盈亏与 R 倍数</div>
             </div>
             <button
-              className="btn btn-secondary h-7 shrink-0 px-2 text-[10.5px]"
+              className="btn btn-secondary h-7 shrink-0 px-2 text-xs"
               onClick={() => startContract()}
             >
-              <Plus size={12} />
+              <Plus size={14} strokeWidth={1.5} />
               添加合约
             </button>
           </div>
@@ -786,28 +785,28 @@ export function Settings() {
                   key={contract.symbol}
                   className="flex items-center gap-2 border-b border-line/70 px-2.5 py-1.5 last:border-b-0"
                 >
-                  <span className="w-12 shrink-0 font-mono text-[11px] font-semibold text-ink">
+                  <span className="w-12 shrink-0 font-mono text-xs font-medium text-ink">
                     {contract.symbol}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[11px] text-ink-2">
+                  <span className="min-w-0 flex-1 truncate text-xs text-ink-2">
                     {contract.name}
                   </span>
-                  <span className="num shrink-0 text-[10.5px] text-muted">
-                    {fmtMoney(contract.pointValue, false)}/点
+                  <span className="num shrink-0 text-xs text-muted">
+                    {fmtMoney(contract.pointValue, true)}/点
                   </span>
-                  <span className="num w-9 shrink-0 text-right text-[10px] text-faint">
+                  <span className="num w-9 shrink-0 text-right text-xs text-faint">
                     {usage} 笔
                   </span>
                   <button
-                    className="icon-btn h-6 w-6"
+                    className="icon-btn h-7 w-7"
                     title="编辑合约"
                     aria-label={`编辑 ${contract.symbol}`}
                     onClick={() => startContract(contract)}
                   >
-                    <Pencil size={11} />
+                    <Pencil size={14} strokeWidth={1.5} />
                   </button>
                   <button
-                    className="icon-btn h-6 w-6 hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
+                    className="icon-btn h-7 w-7 hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
                     title={
                       usage > 0
                         ? '仍有交易使用该合约，不能删除'
@@ -823,7 +822,7 @@ export function Settings() {
                       }
                     }}
                   >
-                    <Trash2 size={11} />
+                    <Trash2 size={14} strokeWidth={1.5} />
                   </button>
                 </div>
               )
@@ -842,14 +841,14 @@ export function Settings() {
               <div key={kind}>
                 <div className="flex items-center justify-between gap-2">
                   <div>
-                    <div className="text-[11.5px] font-medium text-ink">{label}</div>
-                    <div className="mt-0.5 text-[10px] text-faint">{hint}</div>
+                    <div className="text-xs font-medium text-ink">{label}</div>
+                    <div className="mt-0.5 text-xs text-faint">{hint}</div>
                   </div>
                   <button
-                    className="btn btn-ghost h-6 shrink-0 px-1.5 text-[10.5px]"
+                    className="btn btn-ghost h-6 shrink-0 px-1.5 text-xs"
                     onClick={() => startWord(kind)}
                   >
-                    <Plus size={12} />
+                    <Plus size={14} strokeWidth={1.5} />
                     添加
                   </button>
                 </div>
@@ -862,7 +861,7 @@ export function Settings() {
                     return (
                       <span
                         key={name}
-                        className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-[10.5px] text-ink-2"
+                        className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-xs text-ink-2"
                       >
                         <button
                           className="max-w-[120px] truncate hover:text-accent"
@@ -872,10 +871,10 @@ export function Settings() {
                           {name}
                         </button>
                         {usage > 0 ? (
-                          <span className="num text-[9px] text-faint">{usage}</span>
+                          <span className="num text-xs text-faint">{usage}</span>
                         ) : null}
                         <button
-                          className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-white hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
+                          className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-paper hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
                           title={
                             usage > 0
                               ? '仍有交易使用，不能删除'
@@ -891,13 +890,13 @@ export function Settings() {
                             if (ok) setNotice({ tone: 'ok', text: `已删除${label}「${name}」。` })
                           }}
                         >
-                          <X size={10} />
+                          <X size={12} strokeWidth={1.5} />
                         </button>
                       </span>
                     )
                   })}
                   {!list.length ? (
-                    <span className="text-[10px] text-faint">还没有条目</span>
+                    <span className="text-xs text-faint">还没有条目</span>
                   ) : null}
                 </div>
               </div>
@@ -910,14 +909,14 @@ export function Settings() {
           <div>
             <div className="flex items-center justify-between gap-2">
               <div>
-                <div className="text-[11.5px] font-medium text-ink">过程纪律项</div>
-                <div className="mt-0.5 text-[10px] text-faint">每笔交易逐项勾选，参与执行分</div>
+                <div className="text-xs font-medium text-ink">过程纪律项</div>
+                <div className="mt-0.5 text-xs text-faint">每笔交易逐项勾选，参与执行分</div>
               </div>
               <button
-                className="btn btn-ghost h-6 shrink-0 px-1.5 text-[10.5px]"
+                className="btn btn-ghost h-6 shrink-0 px-1.5 text-xs"
                 onClick={() => startDiscipline()}
               >
-                <Plus size={12} />
+                <Plus size={14} strokeWidth={1.5} />
                 添加
               </button>
             </div>
@@ -930,7 +929,7 @@ export function Settings() {
                 return (
                   <span
                     key={item.id}
-                    className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-[10.5px] text-ink-2"
+                    className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-xs text-ink-2"
                   >
                     <button
                       className="max-w-[150px] truncate hover:text-accent"
@@ -940,10 +939,10 @@ export function Settings() {
                       {item.label}
                     </button>
                     {usage > 0 ? (
-                      <span className="num text-[9px] text-faint">{usage}</span>
+                      <span className="num text-xs text-faint">{usage}</span>
                     ) : null}
                     <button
-                      className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-white hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
+                      className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-paper hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
                       title={
                         usage > 0
                           ? '已有交易记录该项，不能删除'
@@ -959,7 +958,7 @@ export function Settings() {
                         }
                       }}
                     >
-                      <X size={10} />
+                      <X size={12} strokeWidth={1.5} />
                     </button>
                   </span>
                 )
@@ -970,14 +969,14 @@ export function Settings() {
           <div>
             <div className="flex items-center justify-between gap-2">
               <div>
-                <div className="text-[11.5px] font-medium text-ink">错误标签</div>
-                <div className="mt-0.5 text-[10px] text-faint">标记过程错误，并计入错误成本</div>
+                <div className="text-xs font-medium text-ink">错误标签</div>
+                <div className="mt-0.5 text-xs text-faint">标记过程错误，并计入错误成本</div>
               </div>
               <button
-                className="btn btn-ghost h-6 shrink-0 px-1.5 text-[10.5px]"
+                className="btn btn-ghost h-6 shrink-0 px-1.5 text-xs"
                 onClick={() => startTag()}
               >
-                <Plus size={12} />
+                <Plus size={14} strokeWidth={1.5} />
                 添加
               </button>
             </div>
@@ -991,7 +990,7 @@ export function Settings() {
                 return (
                   <span
                     key={tag}
-                    className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-[10.5px] text-ink-2"
+                    className="inline-flex items-center gap-1 rounded-md border border-line bg-list py-1 pl-2 pr-1 text-xs text-ink-2"
                   >
                     <button
                       className="max-w-[130px] truncate hover:text-accent"
@@ -1001,10 +1000,10 @@ export function Settings() {
                       {tag}
                     </button>
                     {usage + reviewUsage > 0 ? (
-                      <span className="num text-[9px] text-faint">{usage + reviewUsage}</span>
+                      <span className="num text-xs text-faint">{usage + reviewUsage}</span>
                     ) : null}
                     <button
-                      className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-white hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
+                      className="flex h-4 w-4 items-center justify-center rounded text-faint hover:bg-paper hover:text-loss disabled:cursor-not-allowed disabled:opacity-30"
                       title={locked ? '已有交易或复盘使用该标签，不能删除' : '删除错误标签'}
                       aria-label={`删除错误标签 ${tag}`}
                       disabled={locked}
@@ -1014,13 +1013,13 @@ export function Settings() {
                         }
                       }}
                     >
-                      <X size={10} />
+                      <X size={12} strokeWidth={1.5} />
                     </button>
                   </span>
                 )
               })}
               {!config.mistakeTags.length ? (
-                <span className="text-[10px] text-faint">还没有错误标签</span>
+                <span className="text-xs text-faint">还没有错误标签</span>
               ) : null}
             </div>
           </div>
@@ -1031,12 +1030,12 @@ export function Settings() {
         <div className="px-5 py-4">
           <div className="flex items-center justify-between gap-3">
             <div>
-              <div className="text-[11.5px] font-medium text-ink">盘前检查清单</div>
-              <div className="mt-0.5 text-[10px] text-faint">
+              <div className="text-xs font-medium text-ink">盘前检查清单</div>
+              <div className="mt-0.5 text-xs text-faint">
                 每个形态一组检查项，写每日复盘时按形态勾选；留空不会清空已有清单。
               </div>
             </div>
-            <span className="num shrink-0 text-[10px] text-faint">
+            <span className="num shrink-0 text-xs text-faint">
               {config.checklists.length} 个形态已配置
             </span>
           </div>
@@ -1049,26 +1048,26 @@ export function Settings() {
                   className="flex items-center gap-2 border-b border-line/70 px-2.5 py-1.5 last:border-b-0"
                 >
                   <ListChecks
-                    size={12}
-                    className={checklist ? 'shrink-0 text-accent' : 'shrink-0 text-faint'}
+                    size={14}
+                    className={checklist ? "shrink-0 text-ink-2" : "shrink-0 text-faint"}
                   />
-                  <span className="w-[104px] shrink-0 truncate text-[11px] text-ink">
+                  <span className="w-[104px] shrink-0 truncate text-xs text-ink">
                     {setup}
                   </span>
-                  <span className="min-w-0 flex-1 truncate text-[10px] text-faint">
+                  <span className="min-w-0 flex-1 truncate text-xs text-faint">
                     {checklist
                       ? checklist.items.map((item) => item.label).join(' · ')
                       : '未配置'}
                   </span>
                   {checklist ? (
-                    <span className="num shrink-0 text-[9.5px] text-faint">
+                    <span className="num shrink-0 text-xs text-faint">
                       {checklist.items.length} 项
                     </span>
                   ) : null}
                   {checklist && removingChecklist === checklist.id ? (
                     <div className="flex shrink-0 items-center gap-1">
                       <button
-                        className="btn btn-danger h-6 px-2 text-[10px]"
+                        className="btn btn-danger h-6 px-2 text-xs"
                         onClick={() => {
                           deleteChecklist(checklist.id)
                           setRemovingChecklist(null)
@@ -1081,7 +1080,7 @@ export function Settings() {
                         确认删除
                       </button>
                       <button
-                        className="btn btn-secondary h-6 px-2 text-[10px]"
+                        className="btn btn-secondary h-6 px-2 text-xs"
                         onClick={() => setRemovingChecklist(null)}
                       >
                         取消
@@ -1090,21 +1089,21 @@ export function Settings() {
                   ) : (
                     <div className="flex shrink-0 items-center gap-0.5">
                       <button
-                        className="icon-btn h-6 w-6"
+                        className="icon-btn h-7 w-7"
                         title={checklist ? '编辑检查清单' : '配置检查清单'}
                         aria-label={`${checklist ? '编辑' : '配置'} ${setup} 的检查清单`}
                         onClick={() => startChecklist(setup)}
                       >
-                        <Pencil size={11} />
+                        <Pencil size={14} strokeWidth={1.5} />
                       </button>
                       {checklist ? (
                         <button
-                          className="icon-btn h-6 w-6 hover:text-loss"
+                          className="icon-btn h-7 w-7 hover:text-loss"
                           title="删除检查清单"
                           aria-label={`删除 ${setup} 的检查清单`}
                           onClick={() => setRemovingChecklist(checklist.id)}
                         >
-                          <Trash2 size={11} />
+                          <Trash2 size={14} strokeWidth={1.5} />
                         </button>
                       ) : null}
                     </div>
@@ -1115,7 +1114,7 @@ export function Settings() {
           </div>
         </div>
 
-        <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] leading-relaxed text-faint">
+        <div className="border-t border-line bg-list px-5 py-2.5 text-xs leading-relaxed text-faint">
           点击名称即可改名；纪律项改名不影响历史勾选，错误标签改名会同步历史交易与复盘。仍被使用的条目不能删除。
         </div>
       </section>
@@ -1123,14 +1122,12 @@ export function Settings() {
 
       {tab === 'data' ? (
         <>
-      <section className="mt-3 rounded-xl border border-line bg-white">
+      <section className="mt-6 rounded-xl border border-line bg-paper">
         <div className="flex items-center gap-2.5 px-5 py-4">
-          <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-accent-soft text-accent">
-            <Database size={15} />
-          </span>
+          <Database size={18} strokeWidth={1.5} className="shrink-0 text-muted" />
           <div>
-            <h2 className="text-[12.5px] font-semibold text-ink">本机数据</h2>
-            <p className="mt-0.5 text-[10.5px] text-faint">
+            <h2 className="text-base font-medium text-ink">本机数据</h2>
+            <p className="mt-0.5 text-xs text-faint">
               Rust 后端写入 JSON 文件，改动后 250ms 自动保存，并保留一份备份。
             </p>
           </div>
@@ -1139,19 +1136,19 @@ export function Settings() {
         <div className="px-5 py-4">
           <div className="field-label">数据文件路径</div>
           <div className="flex items-start gap-2">
-            <code className="min-w-0 flex-1 break-all rounded-md border border-line bg-list px-2.5 py-2 font-mono text-[10.5px] leading-relaxed text-ink-2">
+            <code className="min-w-0 flex-1 break-all rounded-md border border-line bg-list px-2.5 py-2 font-mono text-xs leading-relaxed text-ink-2">
               {storagePath || '浏览器预览模式：使用 localStorage 临时存储'}
             </code>
             <button
-              className="btn btn-secondary h-8 shrink-0 px-2.5 text-[11px]"
+              className="btn btn-secondary h-8 shrink-0 px-2.5 text-xs"
               onClick={() => void copyPath()}
               disabled={!storagePath}
             >
-              {copied ? <Check size={12} /> : <Copy size={12} />}
+              {copied ? <Check size={14} strokeWidth={1.5} /> : <Copy size={14} strokeWidth={1.5} />}
               {copied ? '已复制' : '复制'}
             </button>
           </div>
-          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+          <p className="mt-2 text-xs leading-relaxed text-faint">
             K 线图保存在同目录下的
             <span className="font-mono"> charts/ </span>
             文件夹。同目录下的
@@ -1159,23 +1156,21 @@ export function Settings() {
             是上一次的自动备份。若文件损坏，会保留为
             <span className="font-mono"> meridian.corrupt-时间戳.json</span> 而不会被覆盖。
           </p>
-          <div className="mt-3 flex items-center gap-2 rounded-lg bg-list px-3 py-2 text-[10.5px] text-muted">
-            <Wallet size={13} className="shrink-0 text-accent" />
+          <div className="mt-3 flex items-center gap-2 rounded-lg bg-list px-3 py-2 text-xs text-muted">
+            <Wallet size={16} strokeWidth={1.5} className="shrink-0 text-muted" />
             当前账户「{account.name}」：{trades.length} 笔交易（{openCount} 笔持仓中）·
             {reviews.length} 篇每日复盘 · {notes.length} 篇笔记 · 起始权益{' '}
-            {fmtMoney(account.startingEquity, false)}
+            {fmtMoney(account.startingEquity, true, account.currency)}
           </div>
         </div>
       </section>
 
-      <section className="mt-3 rounded-xl border border-line bg-white">
+      <section className="mt-6 rounded-xl border border-line bg-paper">
         <div className="flex items-start gap-2.5 px-5 py-4">
-          <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
-            <Database size={15} />
-          </span>
+          <Database size={18} strokeWidth={1.5} className="mt-0.5 shrink-0 text-muted" />
           <div className="min-w-0 flex-1">
-            <h2 className="text-[12.5px] font-semibold text-ink">完整备份与恢复</h2>
-            <p className="mt-0.5 text-[10.5px] leading-relaxed text-faint">
+            <h2 className="text-base font-medium text-ink">完整备份与恢复</h2>
+            <p className="mt-0.5 text-xs leading-relaxed text-faint">
               包含全部账户、交易、笔记、交易字典与 K 线截图。每天首次启动或首次保存时自动生成一份，
               保留最近 {backupStatus?.keep ?? 14} 份。
             </p>
@@ -1189,7 +1184,7 @@ export function Settings() {
               onClick={() => void exportBackup()}
               disabled={!backupSupported() || backupBusy !== null}
             >
-              <Download size={14} />
+              <Download size={16} strokeWidth={1.5} />
               {backupBusy === 'export' ? '正在导出…' : '导出完整备份'}
             </button>
             <button
@@ -1197,14 +1192,14 @@ export function Settings() {
               onClick={() => void chooseRestore()}
               disabled={!backupSupported() || backupBusy !== null}
             >
-              <Upload size={14} />
+              <Upload size={16} strokeWidth={1.5} />
               从备份恢复
             </button>
             {!backupSupported() ? (
-              <span className="text-[10.5px] text-faint">仅桌面版可用</span>
+              <span className="text-xs text-faint">仅桌面版可用</span>
             ) : null}
           </div>
-          <div className="mt-3 rounded-lg bg-list px-3 py-2.5 text-[10.5px] leading-relaxed text-muted">
+          <div className="mt-3 rounded-lg bg-list px-3 py-2.5 text-xs leading-relaxed text-muted">
             <div className="flex flex-wrap items-center justify-between gap-2">
               <span>
                 每日自动备份：
@@ -1223,25 +1218,25 @@ export function Settings() {
               </span>
             </div>
             {backupStatus?.dir ? (
-              <div className="mt-1 break-all font-mono text-[9.5px] text-faint">
+              <div className="mt-1 break-all font-mono text-xs text-faint">
                 {backupStatus.dir}
               </div>
             ) : null}
           </div>
-          <p className="mt-2 text-[10.5px] leading-relaxed text-faint">
+          <p className="mt-2 text-xs leading-relaxed text-faint">
             恢复会替换当前所有账户的数据与 K 线图；操作前会先生成一份当前状态的安全备份，恢复完成后应用会自动重新加载。
           </p>
         </div>
       </section>
 
-      <section className="mt-3 rounded-xl border border-line bg-white">
+      <section className="mt-6 rounded-xl border border-line bg-paper">
         <div className="flex items-center gap-2.5 px-5 py-4">
           <span className="flex h-8 w-8 items-center justify-center rounded-lg bg-list text-muted ring-1 ring-line">
-            <FileSpreadsheet size={15} />
+            <FileSpreadsheet size={16} strokeWidth={1.5} />
           </span>
           <div>
-            <h2 className="text-[12.5px] font-semibold text-ink">CSV 导入与导出</h2>
-            <p className="mt-0.5 text-[10.5px] text-faint">
+            <h2 className="text-base font-medium text-ink">CSV 导入与导出</h2>
+            <p className="mt-0.5 text-xs text-faint">
               导入到当前账户「{account.name}」，支持中文或英文表头，重复交易会自动跳过。
             </p>
           </div>
@@ -1256,7 +1251,7 @@ export function Settings() {
             onChange={(event) => void onImport(event.target.files?.[0] ?? null)}
           />
           <button className="btn btn-primary" onClick={() => fileRef.current?.click()}>
-            <Upload size={14} />
+            <Upload size={16} strokeWidth={1.5} />
             导入 CSV
           </button>
           <button
@@ -1269,14 +1264,14 @@ export function Settings() {
             }
             disabled={!trades.length}
           >
-            <Download size={14} />
+            <Download size={16} strokeWidth={1.5} />
             导出当前账户
           </button>
-          <span className="ml-auto text-[10.5px] text-faint">
+          <span className="ml-auto text-xs text-faint">
             识别列：日期、时间、合约、方向、手数、入场价、止损价、出场价、形态、备注
           </span>
         </div>
-        <div className="border-t border-line bg-list px-5 py-2.5 text-[10.5px] leading-relaxed text-faint">
+        <div className="border-t border-line bg-list px-5 py-2.5 text-xs leading-relaxed text-faint">
           缺少盈亏或 R 时，会按合约点值、入场/出场价与手续费自动计算；日期支持
           2026-11-04、2026/11/04 与 11/04/2026。美分账户的盈亏、手续费与点值都按美分计。
         </div>
@@ -1284,10 +1279,10 @@ export function Settings() {
 
       <Mt5Sync />
 
-      <section className="mt-3 rounded-xl border border-line bg-white">
+      <section className="mt-6 rounded-xl border border-line bg-paper">
         <div className="px-5 py-4">
-          <h2 className="text-[12.5px] font-semibold text-ink">示例与重置</h2>
-          <p className="mt-0.5 text-[10.5px] text-faint">
+          <h2 className="text-base font-medium text-ink">示例与重置</h2>
+          <p className="mt-0.5 text-xs text-faint">
             示例数据只在你主动点击时写入，用于体验界面与统计。
           </p>
         </div>
@@ -1295,15 +1290,15 @@ export function Settings() {
         <div className="space-y-3 px-5 py-4">
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[12px] font-medium text-ink">载入示例数据</div>
-              <div className="mt-0.5 text-[10.5px] text-muted">
+              <div className="text-xs font-medium text-ink">载入示例数据</div>
+              <div className="mt-0.5 text-xs text-muted">
                 会替换全部账户、交易与笔记，示例数据放在独立账户中。
               </div>
             </div>
             {demoConfirm ? (
               <div className="flex items-center gap-2">
                 <button
-                  className="btn btn-danger h-7 px-2.5 text-[11px]"
+                  className="btn btn-danger h-7 px-2.5 text-xs"
                   onClick={() => {
                     loadDemo()
                     setDemoConfirm(false)
@@ -1313,7 +1308,7 @@ export function Settings() {
                   确认载入
                 </button>
                 <button
-                  className="btn btn-secondary h-7 px-2.5 text-[11px]"
+                  className="btn btn-secondary h-7 px-2.5 text-xs"
                   onClick={() => setDemoConfirm(false)}
                 >
                   取消
@@ -1321,7 +1316,7 @@ export function Settings() {
               </div>
             ) : (
               <button className="btn btn-secondary" onClick={() => setDemoConfirm(true)}>
-                <Sparkles size={13} />
+                <Database size={16} strokeWidth={1.5} />
                 载入示例
               </button>
             )}
@@ -1331,17 +1326,17 @@ export function Settings() {
 
           <div className="flex flex-wrap items-center justify-between gap-3">
             <div>
-              <div className="text-[12px] font-medium text-ink">
+              <div className="text-xs font-medium text-ink">
                 清空当前账户的交易、复盘、资金流水与笔记
               </div>
-              <div className="mt-0.5 text-[10.5px] text-muted">
+              <div className="mt-0.5 text-xs text-muted">
                 只影响「{account.name}」，其他账户与账户设置保持不变。
               </div>
             </div>
             {clearConfirm ? (
               <div className="flex items-center gap-2">
                 <button
-                  className="btn btn-danger h-7 px-2.5 text-[11px]"
+                  className="btn btn-danger h-7 px-2.5 text-xs"
                   onClick={() => {
                     clearAll()
                     setClearConfirm(false)
@@ -1354,7 +1349,7 @@ export function Settings() {
                   确认清空
                 </button>
                 <button
-                  className="btn btn-secondary h-7 px-2.5 text-[11px]"
+                  className="btn btn-secondary h-7 px-2.5 text-xs"
                   onClick={() => setClearConfirm(false)}
                 >
                   取消
@@ -1366,7 +1361,7 @@ export function Settings() {
                 onClick={() => setClearConfirm(true)}
                 disabled={!trades.length && !notes.length && !reviews.length && !cashFlows.length}
               >
-                <Trash2 size={13} />
+                <Trash2 size={16} strokeWidth={1.5} />
                 清空数据
               </button>
             )}
@@ -1376,8 +1371,8 @@ export function Settings() {
         </>
       ) : null}
 
-      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-[10px] text-faint">
-        <span>MERIDIAN 0.5.1 · Tauri 2 · Rust · React · Tailwind CSS</span>
+      <div className="mt-5 flex flex-wrap items-center justify-between gap-2 px-1 text-xs text-faint">
+        <span>MERIDIAN 0.5.1 · 本地优先交易复盘</span>
         <span>数据仅保存在本机，不上传任何服务器。</span>
       </div>
 
@@ -1390,7 +1385,7 @@ export function Settings() {
           width={440}
           footer={
             <>
-              <span className="text-[10.5px] text-faint">
+              <span className="text-xs text-faint">
                 {contractDraft.original ? '修改代码会同步历史交易' : '保存后可立刻在记账时选择'}
               </span>
               <div className="flex items-center gap-2">
@@ -1398,7 +1393,7 @@ export function Settings() {
                   取消
                 </button>
                 <button className="btn btn-primary" onClick={submitContract}>
-                  <Check size={14} />
+                  <Check size={16} strokeWidth={1.5} />
                   保存
                 </button>
               </div>
@@ -1407,7 +1402,7 @@ export function Settings() {
         >
           <div className="space-y-3.5">
             {dictError ? (
-              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
                 {dictError}
               </div>
             ) : null}
@@ -1416,7 +1411,7 @@ export function Settings() {
                 <span className="field-label">合约代码</span>
                 <input
                   name="symbol"
-                  className="input font-mono uppercase"
+                  className="input font-mono"
                   placeholder="例如：YM"
                   value={contractDraft.symbol}
                   onChange={(event) =>
@@ -1470,7 +1465,7 @@ export function Settings() {
                 取消
               </button>
               <button className="btn btn-primary" onClick={submitWord}>
-                <Check size={14} />
+                <Check size={16} strokeWidth={1.5} />
                 保存
               </button>
             </div>
@@ -1478,7 +1473,7 @@ export function Settings() {
         >
           <div className="space-y-3.5">
             {dictError ? (
-              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
                 {dictError}
               </div>
             ) : null}
@@ -1513,7 +1508,7 @@ export function Settings() {
                 取消
               </button>
               <button className="btn btn-primary" onClick={submitDiscipline}>
-                <Check size={14} />
+                <Check size={16} strokeWidth={1.5} />
                 保存
               </button>
             </div>
@@ -1521,7 +1516,7 @@ export function Settings() {
         >
           <div className="space-y-3.5">
             {dictError ? (
-              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
                 {dictError}
               </div>
             ) : null}
@@ -1541,7 +1536,7 @@ export function Settings() {
                 }}
               />
             </label>
-            <p className="text-[10px] leading-relaxed text-faint">
+            <p className="text-xs leading-relaxed text-faint">
               改名不会影响历史交易的勾选结果；已有交易记录的纪律项不能删除。
             </p>
           </div>
@@ -1561,7 +1556,7 @@ export function Settings() {
                 取消
               </button>
               <button className="btn btn-primary" onClick={submitTag}>
-                <Check size={14} />
+                <Check size={16} strokeWidth={1.5} />
                 保存
               </button>
             </div>
@@ -1569,7 +1564,7 @@ export function Settings() {
         >
           <div className="space-y-3.5">
             {dictError ? (
-              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
                 {dictError}
               </div>
             ) : null}
@@ -1587,7 +1582,7 @@ export function Settings() {
                 }}
               />
             </label>
-            <p className="text-[10px] leading-relaxed text-faint">
+            <p className="text-xs leading-relaxed text-faint">
               仍被交易或复盘使用的标签不能删除，改名后历史记录会一并更新。
             </p>
           </div>
@@ -1603,13 +1598,13 @@ export function Settings() {
           width={480}
           footer={
             <>
-              <span className="text-[10.5px] text-faint">留空无法保存；删除请用列表右侧按钮</span>
+              <span className="text-xs text-faint">留空无法保存；删除请用列表右侧按钮</span>
               <div className="flex items-center gap-2">
                 <button className="btn btn-secondary" onClick={() => setChecklistDraft(null)}>
                   取消
                 </button>
                 <button className="btn btn-primary" onClick={submitChecklist}>
-                  <Check size={14} />
+                  <Check size={16} strokeWidth={1.5} />
                   保存清单
                 </button>
               </div>
@@ -1618,7 +1613,7 @@ export function Settings() {
         >
           <div className="space-y-3.5">
             {dictError ? (
-              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+              <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
                 {dictError}
               </div>
             ) : null}
@@ -1635,7 +1630,7 @@ export function Settings() {
                 }
               />
             </label>
-            <p className="text-[10px] leading-relaxed text-faint">
+            <p className="text-xs leading-relaxed text-faint">
               新增或改名会生成新的检查项；已有复盘中的旧勾选会保留但不再显示。
             </p>
           </div>
@@ -1670,17 +1665,17 @@ export function Settings() {
             </div>
           }
         >
-          <div className="space-y-3 text-[11.5px] leading-relaxed text-ink-2">
-            <div className="rounded-lg border border-warn/25 bg-warn-soft px-3 py-2 text-[11px] leading-relaxed text-warn">
+          <div className="space-y-3 text-xs leading-relaxed text-ink-2">
+            <div className="rounded-lg border border-warn/25 bg-warn-soft px-3 py-2 text-xs leading-relaxed text-warn">
               恢复会替换当前所有账户、交易、笔记、交易字典与 K 线图，且无法撤销。
             </div>
             <div>
               <div className="field-label">备份文件</div>
-              <div className="break-all rounded-md border border-line bg-list px-2.5 py-2 font-mono text-[10.5px] text-ink-2">
+              <div className="break-all rounded-md border border-line bg-list px-2.5 py-2 font-mono text-xs text-ink-2">
                 {restoreSource.path}
               </div>
             </div>
-            <p className="text-[10.5px] leading-relaxed text-faint">
+            <p className="text-xs leading-relaxed text-faint">
               恢复前会自动生成一份当前数据的完整安全备份；恢复完成后应用会自动重新加载。
               恢复过程中请勿关闭应用。
             </p>
@@ -1704,6 +1699,7 @@ export function Settings() {
         open={flowOpen}
         flow={editingFlow}
         accountId={account.id}
+        currency={account.currency}
         onClose={() => {
           setFlowOpen(false)
           setEditingFlow(null)
@@ -1718,6 +1714,7 @@ export function Settings() {
             text: `已保存 ${flow.date} ${label} ${fmtSignedMoney(
               flow.amount * (CASH_FLOW_KINDS.find((item) => item.key === flow.kind)?.sign ?? 1),
               true,
+              account.currency,
             )}，权益已重新计算。`,
           })
         }}

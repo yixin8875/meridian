@@ -80,35 +80,33 @@ export function UpdateBanner() {
   const busy = phase === 'downloading' || phase === 'installing'
 
   return (
-    <div className="fade-in fixed bottom-4 right-4 z-40 w-[360px] max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-line bg-white shadow-[0_18px_48px_-12px_rgba(20,20,25,0.28)]">
-      <div className="flex items-start gap-2.5 px-3.5 pb-3 pt-3.5">
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-accent-soft text-accent">
-          <Download size={15} />
-        </span>
+    <div className="fade-in fixed bottom-4 right-4 z-40 w-90 max-w-[calc(100vw-32px)] overflow-hidden rounded-xl border border-line bg-paper shadow-[0_8px_24px_rgba(32,28,23,0.08)]">
+      <div className="flex items-start gap-3 px-4 py-4">
+        <Download size={18} strokeWidth={1.5} className="mt-0.5 shrink-0 text-muted" />
         <div className="min-w-0 flex-1">
-          <p className="text-[12.5px] font-semibold text-ink">发现新版本 v{update.version}</p>
-          <p className="mt-0.5 text-[10.5px] text-muted">
+          <p className="text-sm font-medium text-ink">发现新版本 v{update.version}</p>
+          <p className="mt-1 text-xs text-muted">
             当前 v{update.currentVersion} · 更新后会自动重启
           </p>
           {phase === 'downloading' ? (
-            <p className="num mt-1.5 text-[10.5px] text-accent">正在下载 {progress}%</p>
+            <p className="num mt-1.5 text-xs text-accent">正在下载 {progress}%</p>
           ) : null}
           {phase === 'installing' ? (
-            <p className="mt-1.5 text-[10.5px] text-accent">正在安装，应用即将重启…</p>
+            <p className="mt-1.5 text-xs text-accent">正在安装，应用即将重启…</p>
           ) : null}
           {error ? (
-            <p className="mt-1.5 break-words text-[10.5px] leading-relaxed text-loss">
+            <p className="mt-1.5 break-words text-xs leading-relaxed text-loss">
               更新失败：{error}
             </p>
           ) : null}
         </div>
         {!busy ? (
           <button
-            className="icon-btn -mr-1 -mt-1 h-7 w-7"
+            className="icon-btn -mr-1 -mt-1 h-8 w-8"
             onClick={dismiss}
             aria-label="稍后更新"
           >
-            <X size={13} />
+            <X size={16} strokeWidth={1.5} />
           </button>
         ) : null}
       </div>
@@ -116,20 +114,20 @@ export function UpdateBanner() {
       {phase === 'downloading' ? (
         <div className="h-0.5 w-full bg-canvas">
           <div
-            className="h-full bg-accent transition-all duration-200"
-            style={{ width: `${progress}%` }}
+            className="h-full origin-left bg-accent transition-transform duration-200"
+            style={{ transform: `scaleX(${Math.min(100, Math.max(0, progress)) / 100})` }}
           />
         </div>
       ) : null}
 
-      <div className="flex items-center justify-end gap-2 border-t border-line bg-list px-3.5 py-2.5">
+      <div className="flex items-center justify-end gap-2 border-t border-line bg-list px-4 py-3">
         {!busy ? (
-          <button className="btn btn-ghost h-7 px-2.5 text-[11px]" onClick={dismiss}>
+          <button className="btn btn-ghost h-8 px-2.5 text-xs" onClick={dismiss}>
             稍后
           </button>
         ) : null}
         <button
-          className="btn btn-primary h-7 px-3 text-[11px]"
+          className="btn btn-primary h-8 px-3 text-xs"
           onClick={() => void install()}
           disabled={busy}
         >

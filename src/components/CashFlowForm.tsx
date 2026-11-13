@@ -1,20 +1,22 @@
 import { useEffect, useState } from 'react'
 import { Check } from 'lucide-react'
-import type { CashFlow, CashFlowKind } from '../types'
+import type { AccountCurrency, CashFlow, CashFlowKind } from '../types'
 import { CASH_FLOW_KINDS } from '../data/contracts'
-import { fmtSignedMoney, todayISO, uid } from '../lib/format'
+import { currencyUnit, fmtSignedMoney, todayISO, uid } from '../lib/format'
 import { Modal } from './primitives'
 
 export function CashFlowDialog({
   open,
   flow,
   accountId,
+  currency = 'USD',
   onClose,
   onSubmit,
 }: {
   open: boolean
   flow: CashFlow | null
   accountId: string
+  currency?: AccountCurrency
   onClose: () => void
   onSubmit: (flow: CashFlow) => void
 }) {
@@ -64,24 +66,26 @@ export function CashFlowDialog({
       width={460}
       footer={
         <>
-          <span className="num text-[11px] text-faint">
-            {Number.isFinite(parsed) && parsed > 0 ? fmtSignedMoney(parsed * sign, true) : '—'}
+          <span className="num text-xs text-faint">
+            {Number.isFinite(parsed) && parsed > 0
+              ? fmtSignedMoney(parsed * sign, true, currency)
+              : '—'}
           </span>
           <div className="flex items-center gap-2">
             <button className="btn btn-secondary" onClick={onClose}>
               取消
             </button>
             <button className="btn btn-primary" onClick={submit}>
-              <Check size={14} />
+              <Check size={16} strokeWidth={1.5} />
               保存
             </button>
           </div>
         </>
       }
     >
-      <div className="space-y-3.5">
+      <div className="space-y-4">
         {error ? (
-          <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-[11.5px] text-loss">
+          <div className="rounded-lg border border-loss/25 bg-loss-soft px-3 py-2 text-xs text-loss">
             {error}
           </div>
         ) : null}
@@ -115,7 +119,7 @@ export function CashFlowDialog({
         </div>
 
         <label className="block">
-          <span className="field-label">金额（USD）</span>
+          <span className="field-label">金额（{currencyUnit(currency)}）</span>
           <input
             name="amount"
             type="number"
@@ -142,7 +146,7 @@ export function CashFlowDialog({
           />
         </label>
 
-        <p className="rounded-lg bg-list px-3 py-2 text-[10.5px] leading-relaxed text-faint">
+        <p className="rounded-lg bg-list px-3 py-2 text-xs leading-relaxed text-faint">
           入金与分红增加权益，出金减少权益。收益率和回撤会剔除这些资金变动，只衡量交易表现。
         </p>
       </div>

@@ -59,30 +59,29 @@ export function AccountMenu({ onManage }: { onManage: () => void }) {
         aria-haspopup="menu"
         title="切换账户"
       >
-        <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-lg bg-white text-accent shadow-[0_0_0_1px_var(--color-line)]">
-          <Wallet size={16} />
-        </span>
+        <Wallet size={18} strokeWidth={1.5} className="shrink-0 text-muted" />
         <span className="min-w-0 flex-1">
-          <span className="block truncate text-[12px] font-medium text-ink">{account.name}</span>
-          <span className="num block text-[10.5px] text-muted">
-            {fmtMoney(equity, false, account.currency)}
+          <span className="block truncate text-sm font-medium text-ink">{account.name}</span>
+          <span className="num block text-xs text-muted">
+            {fmtMoney(equity, true, account.currency)}
           </span>
         </span>
         <ChevronDown
-          size={13}
+          size={14}
+          strokeWidth={1.5}
           className={`shrink-0 text-faint transition-transform ${open ? 'rotate-180' : ''}`}
         />
       </button>
 
       {open ? (
         <div
-          className="fade-in absolute left-0 top-[calc(100%+4px)] z-40 w-[236px] overflow-hidden rounded-lg border border-line bg-white shadow-[0_12px_36px_-12px_rgba(20,20,25,0.28)]"
+          className="fade-in absolute left-0 top-[calc(100%+4px)] z-40 w-64 overflow-hidden rounded-xl border border-line bg-paper shadow-[0_8px_24px_rgba(32,28,23,0.08)]"
           role="menu"
         >
-          <div className="px-3 pb-1 pt-2 text-[9.5px] font-medium uppercase tracking-[0.08em] text-faint">
+          <div className="px-3 pb-1.5 pt-2.5 text-xs text-muted">
             账户 · {accounts.length}
           </div>
-          <div className="max-h-[260px] overflow-y-auto px-1.5 pb-1">
+          <div className="max-h-64 overflow-y-auto px-1.5 pb-1.5">
             {accounts.map((entry) => {
               const active = entry.id === account.id
               const count = data.trades.filter((trade) => trade.accountId === entry.id).length
@@ -91,7 +90,7 @@ export function AccountMenu({ onManage }: { onManage: () => void }) {
                   key={entry.id}
                   role="menuitemradio"
                   aria-checked={active}
-                  className={`flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left transition-colors ${
+                  className={`flex w-full items-center gap-2 rounded-md px-2 py-2 text-left transition-colors ${
                     active ? 'bg-selected' : 'hover:bg-hover'
                   }`}
                   onClick={() => {
@@ -100,42 +99,42 @@ export function AccountMenu({ onManage }: { onManage: () => void }) {
                   }}
                 >
                   <span className="min-w-0 flex-1">
-                    <span className="block truncate text-[11.5px] font-medium text-ink">
+                    <span className="block truncate text-sm font-medium text-ink">
                       {entry.name}
                     </span>
-                    <span className="num block text-[10px] text-faint">
+                    <span className="num block text-xs text-faint">
                       {fmtMoney(
                         equityOf(entry, data.trades, data.cashFlows),
-                        false,
+                        true,
                         entry.currency,
                       )}{' '}
                       · {count} 笔
                     </span>
                   </span>
-                  {active ? <Check size={13} className="shrink-0 text-accent" /> : null}
+                  {active ? <Check size={15} strokeWidth={2} className="shrink-0 text-accent" /> : null}
                 </button>
               )
             })}
           </div>
           <div className="border-t border-line p-1.5">
             <button
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11.5px] text-ink-2 transition-colors hover:bg-hover"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-ink-2 transition-colors hover:bg-hover"
               onClick={() => {
                 setOpen(false)
                 setCreating(true)
               }}
             >
-              <Plus size={13} className="text-muted" />
+              <Plus size={16} strokeWidth={1.5} className="text-muted" />
               新建账户
             </button>
             <button
-              className="flex w-full items-center gap-2 rounded-md px-2 py-1.5 text-left text-[11.5px] text-ink-2 transition-colors hover:bg-hover"
+              className="flex w-full items-center gap-2 rounded-md px-2 py-2 text-left text-sm text-ink-2 transition-colors hover:bg-hover"
               onClick={() => {
                 setOpen(false)
                 onManage()
               }}
             >
-              <Settings2 size={13} className="text-muted" />
+              <Settings2 size={16} strokeWidth={1.5} className="text-muted" />
               管理账户
             </button>
           </div>

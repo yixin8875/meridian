@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useState } from 'react'
-import { Activity, AlertCircle } from 'lucide-react'
+import { AlertCircle } from 'lucide-react'
 import type { JournalNote, ListFilter, Page, Trade } from './types'
 import { StoreProvider, useApp } from './store'
 import { AppShell } from './components/Shell'
@@ -12,6 +12,7 @@ import { Overview } from './views/Overview'
 import { Mirror } from './views/Mirror'
 import { Settings } from './views/Settings'
 import { UpdateBanner } from './components/UpdateBanner'
+import { MeridianMark } from './components/primitives'
 import { closedTrades, sortTrades } from './lib/stats'
 
 const PAGES: Page[] = ['overview', 'trades', 'mirror', 'notes', 'settings']
@@ -198,11 +199,9 @@ function Workspace() {
   if (!ready) {
     return (
       <div className="flex h-full flex-col items-center justify-center gap-3 bg-canvas">
-        <span className="flex h-11 w-11 items-center justify-center rounded-xl bg-accent text-white shadow-[0_4px_16px_rgba(11,108,240,0.3)]">
-          <Activity size={22} strokeWidth={2.2} />
-        </span>
-        <span className="text-[11px] tracking-[0.14em] text-faint">MERIDIAN</span>
-        <span className="text-[11px] text-muted">正在读取本机数据…</span>
+        <MeridianMark size={36} className="text-ink" />
+        <span className="text-sm font-medium tracking-wide text-ink">MERIDIAN</span>
+        <span className="text-sm text-muted">正在读取本机数据</span>
       </div>
     )
   }
@@ -252,8 +251,8 @@ function Workspace() {
         list={list}
       >
         {error ? (
-          <div className="flex items-center gap-2 border-b border-loss/20 bg-loss-soft px-5 py-2 text-[11.5px] text-loss">
-            <AlertCircle size={13} className="shrink-0" />
+          <div className="flex items-center gap-2 border-b border-loss/20 bg-loss-soft px-6 py-3 text-sm text-loss">
+            <AlertCircle size={16} strokeWidth={1.5} className="shrink-0" />
             <span className="min-w-0 flex-1 truncate">{error}</span>
             <button className="shrink-0 hover:underline" onClick={() => setError(null)}>
               忽略

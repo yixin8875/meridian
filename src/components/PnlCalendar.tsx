@@ -127,14 +127,14 @@ export function PnlCalendar({
   const empty = model.activeDays === 0
 
   return (
-    <section className="rounded-xl border border-line bg-white">
-      <div className="flex flex-wrap items-center justify-between gap-3 px-4 py-3">
+    <section className="rounded-xl border border-line bg-paper">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-4">
         <div>
-          <h2 className="flex items-center gap-1.5 text-[12.5px] font-semibold text-ink">
-            <CalendarDays size={13} className="text-muted" />
+          <h2 className="flex items-center gap-2 text-base font-medium text-ink">
+            <CalendarDays size={16} strokeWidth={1.5} className="text-muted" />
             盈亏日历
           </h2>
-          <p className="mt-0.5 text-[10.5px] text-faint">
+          <p className="mt-1 text-xs text-faint">
             {empty
               ? '本月暂无交易 · 仍可点击日期写每日复盘'
               : `${model.closedCount} 笔已平仓${
@@ -145,24 +145,24 @@ export function PnlCalendar({
 
         <div className="flex items-center gap-0.5">
           <button
-            className="icon-btn h-7 w-7"
+            className="icon-btn h-8 w-8"
             onClick={() => setMonth((current) => shiftMonth(current, -1))}
             aria-label="上个月"
           >
-            <ChevronLeft size={14} />
+            <ChevronLeft size={16} strokeWidth={1.5} />
           </button>
-          <span className="num min-w-[82px] text-center text-[12px] font-medium text-ink">
+          <span className="num min-w-20 text-center text-sm font-medium text-ink">
             {monthLabel(month)}
           </span>
           <button
-            className="icon-btn h-7 w-7"
+            className="icon-btn h-8 w-8"
             onClick={() => setMonth((current) => shiftMonth(current, 1))}
             aria-label="下个月"
           >
-            <ChevronRight size={14} />
+            <ChevronRight size={16} strokeWidth={1.5} />
           </button>
           <button
-            className="btn btn-ghost ml-1 h-7 px-2 text-[11px]"
+            className="btn btn-ghost ml-1 h-8 px-2.5 text-xs"
             onClick={() => setMonth(todayMonth)}
             disabled={month === todayMonth}
           >
@@ -173,12 +173,12 @@ export function PnlCalendar({
 
       <div className="divider" />
 
-      <div className="px-4 pb-4 pt-3">
-        <div className="grid grid-cols-7 gap-1.5">
+      <div className="px-5 pb-5 pt-4">
+        <div className="grid grid-cols-7 gap-2">
           {WEEKDAYS.map((label, index) => (
             <div
               key={label}
-              className={`pb-1 text-center text-[9.5px] font-medium ${
+              className={`pb-1 text-center text-xs font-medium ${
                 index >= 5 ? 'text-faint/70' : 'text-faint'
               }`}
             >
@@ -187,7 +187,7 @@ export function PnlCalendar({
           ))}
 
           {model.cells.map((date, index) => {
-            if (!date) return <div key={`blank-${index}`} className="h-[68px]" />
+            if (!date) return <div key={`blank-${index}`} className="h-18" />
             const day = model.daily.get(date)
             const pnl = day?.pnl ?? 0
             const hasClosed = Boolean(day?.closed)
@@ -218,14 +218,14 @@ export function PnlCalendar({
                       ? `写 ${fmtDateCN(date)} 的每日复盘；当天 ${day.total} 笔交易，已平仓 ${day.closed} 笔，净盈亏 ${fmtSignedMoney(day.pnl, true)}`
                       : `写 ${fmtDateCN(date)} 的每日复盘`
                 }
-                className={`relative flex h-[68px] flex-col rounded-lg border px-2 py-1.5 text-left transition-colors ${
+                className={`relative flex h-18 flex-col rounded-md border px-2 py-2 text-left transition-colors ${
                   day
                     ? `${
                         hasClosed ? tint(pnl, strength) : 'bg-accent-soft/60'
                       } border-line hover:border-line-2 hover:brightness-[0.985]`
                     : `${
                         isFuture
-                          ? 'border-transparent bg-white'
+                          ? 'border-transparent bg-paper'
                           : 'border-line/70 bg-list/40 hover:bg-list'
                       }`
                 } ${isToday ? 'ring-1 ring-inset ring-accent/40' : ''} ${
@@ -233,9 +233,9 @@ export function PnlCalendar({
                 }`}
               >
                 <span
-                  className={`num text-[10px] ${
+                  className={`num text-xs ${
                     isToday
-                      ? 'font-semibold text-accent'
+                      ? 'font-medium text-accent'
                       : day
                         ? 'text-ink-2'
                         : isFuture
@@ -256,16 +256,16 @@ export function PnlCalendar({
                   <span className="mt-auto block">
                     {hasClosed ? (
                       <span
-                        className={`num block truncate text-[12px] font-semibold ${
+                        className={`num block truncate text-xs font-medium ${
                           pnl > 0 ? 'text-gain' : pnl < 0 ? 'text-loss' : 'text-muted'
                         }`}
                       >
                         {signedCompact(pnl)}
                       </span>
                     ) : (
-                      <span className="num block text-[11px] font-medium text-accent">持仓中</span>
+                      <span className="num block text-xs font-medium text-accent">持仓中</span>
                     )}
-                    <span className="mt-0.5 block text-[9.5px] text-faint">{day.total} 笔</span>
+                    <span className="mt-1 block text-xs text-faint">{day.total} 笔</span>
                   </span>
                 ) : null}
               </button>
@@ -273,12 +273,12 @@ export function PnlCalendar({
           })}
         </div>
 
-        <div className="mt-3 flex flex-wrap items-center justify-between gap-x-5 gap-y-2 border-t border-line pt-3">
+        <div className="mt-4 flex flex-wrap items-center justify-between gap-x-6 gap-y-3 border-t border-line pt-4">
           <div className="flex flex-wrap items-center gap-x-6 gap-y-1.5">
             <div>
-              <div className="text-[9.5px] text-faint">本月净盈亏</div>
+              <div className="text-xs text-faint">本月净盈亏</div>
               <div
-                className={`num text-[13px] font-semibold ${
+                className={`num text-sm font-medium ${
                   model.monthPnl > 0
                     ? 'text-gain'
                     : model.monthPnl < 0
@@ -290,24 +290,24 @@ export function PnlCalendar({
               </div>
             </div>
             <div>
-              <div className="text-[9.5px] text-faint">交易天数</div>
-              <div className="num text-[13px] font-medium text-ink">{model.activeDays} 天</div>
+              <div className="text-xs text-faint">交易天数</div>
+              <div className="num text-sm font-medium text-ink">{model.activeDays} 天</div>
             </div>
             <div>
-              <div className="text-[9.5px] text-faint">盈利 / 亏损日</div>
-              <div className="num text-[13px] font-medium text-ink">
+              <div className="text-xs text-faint">盈利 / 亏损日</div>
+              <div className="num text-sm font-medium text-ink">
                 {model.greenDays} / {model.redDays}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 text-[9.5px] text-faint">
+          <div className="flex items-center gap-3 text-xs text-faint">
             <span className="inline-flex items-center gap-1">
-              <span className="h-2.5 w-2.5 rounded-[3px] bg-gain-soft ring-1 ring-gain/15" />
+              <span className="h-2.5 w-2.5 rounded-sm bg-gain-soft ring-1 ring-gain/15" />
               盈利
             </span>
             <span className="inline-flex items-center gap-1">
-              <span className="h-2.5 w-2.5 rounded-[3px] bg-loss-soft ring-1 ring-loss/15" />
+              <span className="h-2.5 w-2.5 rounded-sm bg-loss-soft ring-1 ring-loss/15" />
               亏损
             </span>
             <span>按已平仓交易统计</span>
